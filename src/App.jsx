@@ -30,7 +30,7 @@ const NAV_TABS = [
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
   const { collections, addCollection } = useCollections(user?.id)
-  const { sales, addSale, updateSale } = useSales(user?.id)
+  const { sales, addSale, markPaid } = useSales(user?.id)
   const { inventory } = useCrateInventory(user?.id)
 
   const { payments, addPayment, deletePayment } = usePayments(user?.id)
@@ -74,20 +74,18 @@ export default function App() {
 
   async function handleAddCollection(data) {
     const result = await addCollection(data)
-    if (result?.error) { showToast('Failed to save collection', 'error'); return }
-    showToast('Collection logged ✓')
+    if (result?.error) throw new Error(result.error.message || 'Failed to save')
   }
 
   async function handleAddSale(data) {
     const result = await addSale(data)
-    if (result?.error) { showToast('Failed to save sale', 'error'); return }
-    showToast(`Sale recorded — ${data.payment_type === 'credit' ? 'Credit' : 'Cash'} ✓`)
+    if (result?.error) throw new Error(result.error.message || 'Failed to save')
   }
 
   async function handleMarkPaid(saleId) {
-    const { error } = await updateSale(saleId, { paid: true })
+    const { error } = await markPaid(saleId)
     if (!error) showToast('Marked as paid ✓')
-    else showToast('Could not update', 'error')
+    else showToast('Could not update')
   }
 
   async function handleAddPayment(data) {
@@ -211,7 +209,7 @@ export default function App() {
           />
         )}
         {activeTab === 'history' && (
-          <HistoryLog collections={collections} sales={sales} />
+          <HistoryLog collections={collections} sales={sales} onClearAll={() => {}} showToast={showToast} />
         )}
         {activeTab === 'users' && isAdmin && (
           <UserManager adminEmail={ADMIN_EMAIL} />
@@ -252,7 +250,7 @@ export default function App() {
         })}
       </nav>
 
-      {toast && <Toast message={toast.message} type={toast.type} />}
+      {toast && <Toast message={toast.message} onDone={() => setToast(null)} />}
     </div>
   )
 }
