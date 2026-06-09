@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth }        from './hooks/useAuth'
-import { useCloudData }   from './hooks/useCloudData'
+import { useSales, useCollections, useCrateInventory } from './hooks/useCloudData'
 import { usePayments }    from './hooks/usePayments'
 import { useExpenses }    from './hooks/useExpenses'
 import { useOfflineSync } from './hooks/useOfflineSync'
@@ -29,11 +29,9 @@ const NAV_TABS = [
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
-  const {
-    collections, sales, inventory,
-    addCollection, addSale, updateSale,
-    loading: dataLoading
-  } = useCloudData(user?.id)
+  const { collections, addCollection } = useCollections(user?.id)
+  const { sales, addSale, updateSale } = useSales(user?.id)
+  const { inventory } = useCrateInventory(user?.id)
 
   const { payments, addPayment, deletePayment } = usePayments(user?.id)
   const { expenses, addExpense, deleteExpense }  = useExpenses(user?.id)
