@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { -webkit-tap-highlight-color: transparent; }
+  body {
+    background-color: #F5F3EE;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    overscroll-behavior: none;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+}
+
+@layer components {
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+  .field {
+    @apply w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm
+           focus:outline-none focus:ring-2 focus:ring-farm-green/30 focus:border-farm-green
+           transition-all bg-white text-gray-800;
+  }
+
+  .badge-green  { @apply bg-farm-green-light text-farm-green px-2 py-0.5 rounded-full; }
+  .badge-yellow { @apply bg-farm-amber-light text-farm-amber px-2 py-0.5 rounded-full; }
+  .badge-red    { @apply bg-farm-terra-light text-farm-terra px-2 py-0.5 rounded-full; }
+
+  @keyframes pulse-badge { 0%,100%{opacity:1} 50%{opacity:.55} }
+  .pulse { animation: pulse-badge 1.6s ease-in-out infinite; }
+}
