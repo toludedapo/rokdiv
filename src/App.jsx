@@ -39,7 +39,7 @@ export default function App() {
 }
 
 function Dashboard({ user, onSignOut }) {
-  const isAdmin = user.email === ADMIN_EMAIL
+  const isAdmin = user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 
   // Admin gets an extra Users tab
   const TABS = isAdmin
@@ -151,7 +151,7 @@ function Dashboard({ user, onSignOut }) {
           <button
             onClick={onSignOut}
             title="Sign out"
-            style={{ width:34, height:34, borderRadius:10, background:'#FEF2F2', border:'1.5px solid #FECACA', display:'flex', alignItems:'center', justifyContent:'center', color:'#DC2626', cursor:'pointer', flexShrink:0 }}
+            style={{ width:34, height:34, borderRadius:10, background:'#DC2626', border:'none', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', cursor:'pointer', flexShrink:0, boxShadow:'0 2px 8px rgba(220,38,38,0.35)' }}
           >
             <LogOut size={15} />
           </button>
