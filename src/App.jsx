@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { LayoutDashboard, PlusCircle, Clock, History, LogOut, Download, Loader2 } from 'lucide-react'
 import { useAuth } from './hooks/useAuth.jsx'
 import { useSales, useCollections, useCrateInventory } from './hooks/useCloudData.js'
+import { usePayments } from './hooks/usePayments.js'
 import { todayLabel } from './utils/dateUtils.js'
 import { exportSalesCSV, exportCollectionsCSV } from './utils/exportUtils.js'
 import AuthScreen from './components/AuthScreen.jsx'
@@ -23,10 +24,9 @@ const TABS = [
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
 
-  // Show auth screen while loading or when signed out
   if (authLoading) return (
-    <div className="min-h-screen bg-farm-ivory flex items-center justify-center">
-      <Loader2 size={28} className="animate-spin text-farm-green" />
+    <div style={{ minHeight: '100vh', background: '#0E1A0A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Loader2 size={28} className="animate-spin" style={{ color: '#7AB548' }} />
     </div>
   )
   if (!user) return <AuthScreen />
@@ -40,33 +40,29 @@ function Dashboard({ user, onSignOut }) {
 
   const showToast = useCallback(msg => setToast(msg), [])
 
-  // Cloud data hooks — all keyed to user.id
-  const { sales, loading: salesLoading, addSale, updateSale, deleteSale, markPaid } = useSales(user.id)
-  const { collections, loading: collLoading, addCollection, deleteCollection }       = useCollections(user.id)
-  const { inventory, loading: invLoading, setTotalOwned }                            = useCrateInventory(user.id)
+  const { sales,       loading: salesLoading, addSale,        updateSale,        deleteSale,        markPaid      } = useSales(user.id)
+  const { collections, loading: collLoading,  addCollection,  deleteCollection                                    } = useCollections(user.id)
+  const { inventory,   loading: invLoading,   setTotalOwned                                                       } = useCrateInventory(user.id)
+  const { payments,                           addPayment                                                          } = usePayments(user.id)
 
-  // Derived: total crates out with buyers
-  const cratesOut = useMemo(() => {
-    return sales.reduce((sum, s) => sum + ((s.crates_loaned||0) - (s.crates_returned||0)), 0)
-  }, [sales])
-
+  const cratesOut  = useMemo(() => sales.reduce((sum, s) => sum + ((s.crates_loaned || 0) - (s.crates_returned || 0)), 0), [sales])
   const cratesInFarm = Math.max(0, (inventory?.total_owned ?? 0) - cratesOut)
 
-  // Crate return handler: update crates_returned on a specific sale
+  const paymentsTotal = useMemo(() => payments.reduce((s, p) => s + Number(p.amount), 0), [payments])
+
   const handleReturnCrates = useCallback(async (saleId, newReturned) => {
     await updateSale(saleId, { crates_returned: newReturned })
   }, [updateSale])
 
-  // Clear all (history page)
   async function clearAll() {
-    for (const s of sales) await deleteSale(s.id)
+    for (const s of sales)       await deleteSale(s.id)
     for (const c of collections) await deleteCollection(c.id)
     showToast('All records cleared')
   }
 
-  const debtorCount = useMemo(() => computeDebtors(sales).length, [sales])
+  const debtorCount = useMemo(() => computeDebtors(sales, payments).length, [sales, payments])
 
-  // PWA install banner
+  // PWA install
   const [deferredInstall, setDeferredInstall] = useState(null)
   const [showInstall,     setShowInstall]     = useState(false)
   useEffect(() => {
@@ -81,126 +77,251 @@ function Dashboard({ user, onSignOut }) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-farm-ivory max-w-lg mx-auto">
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#0E1A0A', maxWidth: 480, margin: '0 auto' }}>
 
-      {/* ── Top bar ── */}
-      <header className="bg-farm-green text-white px-4 sticky top-0 z-40 flex items-center justify-between"
-        style={{ paddingTop:'max(12px, env(safe-area-inset-top))', paddingBottom:'12px' }}>
-        <div className="flex items-center gap-2.5">
-          <span className="text-2xl" role="img" aria-label="egg">🥚</span>
+      {/* ── Header ── */}
+      <header
+        style={{
+          background: 'linear-gradient(180deg, #1A3A0A 0%, #162010 100%)',
+          borderBottom: '1px solid #2D4020',
+          padding: `max(14px, env(safe-area-inset-top)) 16px 14px`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          position: 'sticky',
+          top: 0,
+          zIndex: 40,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #2D5A18, #1A3A0A)',
+              border: '1px solid #3D6A22',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 18,
+            }}
+          >
+            🥚
+          </div>
           <div>
-            <h1 className="text-base font-semibold tracking-wide leading-tight">ROKDIV</h1>
-            <p className="text-[10px] text-green-200 leading-tight">{user.email}</p>
+            <h1 style={{ fontSize: 15, fontWeight: 700, color: '#F0EDE8', letterSpacing: '-0.01em', lineHeight: 1 }}>
+              ROKDIV
+            </h1>
+            <p style={{ fontSize: 10, color: '#4A6336', lineHeight: 1, marginTop: 2 }}>{user.email}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {showInstall && (
-            <button onClick={handleInstall}
-              className="flex items-center gap-1 text-xs bg-white/20 rounded-full px-3 py-1.5 font-medium">
-              <Download size={11} /> Install
+            <button
+              onClick={handleInstall}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: '6px 12px',
+                borderRadius: 99,
+                background: 'rgba(122,181,72,0.15)',
+                border: '1px solid rgba(122,181,72,0.3)',
+                color: '#9FD46A',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <Download size={10} /> Install
             </button>
           )}
-          <span className="text-xs bg-white/15 rounded-full px-2.5 py-1 font-mono hidden sm:inline">{todayLabel()}</span>
-          <button onClick={onSignOut} title="Sign out"
-            className="bg-white/15 hover:bg-white/25 rounded-full p-1.5 transition-colors">
-            <LogOut size={15} />
+          <span
+            style={{
+              fontSize: 10,
+              fontFamily: 'JetBrains Mono, monospace',
+              color: '#4A6336',
+              background: '#1C2A14',
+              border: '1px solid #2D4020',
+              borderRadius: 99,
+              padding: '4px 10px',
+            }}
+          >
+            {todayLabel()}
+          </span>
+          <button
+            onClick={onSignOut}
+            title="Sign out"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: '#1C2A14',
+              border: '1px solid #2D4020',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#4A6336',
+              cursor: 'pointer',
+            }}
+          >
+            <LogOut size={14} />
           </button>
         </div>
       </header>
 
-      {/* ── Page content ── */}
-      <main className="flex-1 overflow-y-auto pb-24">
+      {/* ── Content ── */}
+      <main style={{ flex: 1, overflowY: 'auto', paddingBottom: 96 }}>
 
         {tab === 'dashboard' && (
-          <div className="pt-2 space-y-3">
-            <SummaryCards sales={sales} collections={collections} />
+          <div style={{ paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <SummaryCards sales={sales} collections={collections} paymentsTotal={paymentsTotal} />
             <CrateInventoryCard
               inventory={inventory}
               cratesOut={cratesOut}
               loading={invLoading}
               onSetTotalOwned={setTotalOwned}
             />
-            <div className="mx-4 bg-white rounded-2xl border border-gray-200 px-4 py-3.5">
-              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-2.5">Quick Export</p>
-              <div className="flex gap-2">
-                <button onClick={() => { exportSalesCSV(sales); showToast('Sales CSV downloaded') }}
-                  className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 rounded-xl py-2.5 text-xs text-gray-600 font-medium bg-gray-50 active:scale-[0.98]">
-                  <Download size={12} /> Sales
-                </button>
-                <button onClick={() => { exportCollectionsCSV(collections); showToast('Collections CSV downloaded') }}
-                  className="flex-1 flex items-center justify-center gap-1.5 border border-gray-200 rounded-xl py-2.5 text-xs text-gray-600 font-medium bg-gray-50 active:scale-[0.98]">
-                  <Download size={12} /> Collections
-                </button>
+            <div
+              style={{
+                margin: '0 16px',
+                background: '#162010',
+                border: '1px solid #2D4020',
+                borderRadius: 16,
+                padding: '14px 16px',
+              }}
+            >
+              <p className="label" style={{ marginBottom: 10 }}>Quick Export</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[
+                  { label: 'Sales', fn: () => { exportSalesCSV(sales); showToast('Sales CSV downloaded') } },
+                  { label: 'Collections', fn: () => { exportCollectionsCSV(collections); showToast('Collections CSV downloaded') } },
+                ].map(({ label, fn }) => (
+                  <button
+                    key={label}
+                    onClick={fn}
+                    style={{
+                      flex: 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      background: '#1C2A14', border: '1px solid #2D4020', borderRadius: 12,
+                      padding: '10px 0', fontSize: 12, fontWeight: 600, color: '#6A806A', cursor: 'pointer',
+                    }}
+                  >
+                    <Download size={12} /> {label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         )}
 
         {tab === 'log' && (
-          <div className="pt-4 space-y-3">
-            <CollectionForm
-              collections={collections}
-              onSave={addCollection}
-              onDelete={deleteCollection}
-              showToast={showToast}
-            />
-            <SalesForm
-              sales={sales}
-              cratesInFarm={cratesInFarm}
-              onSave={addSale}
-              onDelete={deleteSale}
-              onMarkPaid={markPaid}
-              showToast={showToast}
-            />
+          <div style={{ paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <CollectionForm collections={collections} onSave={addCollection} onDelete={deleteCollection} showToast={showToast} />
+            <SalesForm sales={sales} cratesInFarm={cratesInFarm} onSave={addSale} onDelete={deleteSale} onMarkPaid={markPaid} showToast={showToast} />
           </div>
         )}
 
         {tab === 'credit' && (
-          <div className="pt-4">
+          <div style={{ paddingTop: 12 }}>
             <CreditTracker
               sales={sales}
+              payments={payments}
               onMarkPaid={markPaid}
               onReturnCrates={handleReturnCrates}
+              onAddPayment={addPayment}
               showToast={showToast}
             />
           </div>
         )}
 
         {tab === 'history' && (
-          <div className="pt-4">
-            <HistoryLog
-              sales={sales}
-              collections={collections}
-              onClearAll={clearAll}
-              showToast={showToast}
-            />
+          <div style={{ paddingTop: 12 }}>
+            <HistoryLog sales={sales} collections={collections} onClearAll={clearAll} showToast={showToast} />
           </div>
         )}
       </main>
 
       {/* ── Bottom nav ── */}
-      <nav className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-gray-200 flex z-40"
-        style={{ paddingBottom:'env(safe-area-inset-bottom, 0px)' }}>
+      <nav
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          maxWidth: 480,
+          margin: '0 auto',
+          background: '#0E1A0A',
+          borderTop: '1px solid #2D4020',
+          display: 'flex',
+          zIndex: 40,
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+      >
         {TABS.map(({ id, label, Icon }) => {
           const active   = tab === id
           const hasAlert = id === 'credit' && debtorCount > 0
           return (
-            <button key={id} onClick={() => setTab(id)} aria-label={label}
-              className={`flex-1 flex flex-col items-center pt-2.5 pb-2 gap-0.5 relative transition-colors
-                ${active ? 'text-farm-green' : 'text-gray-400'}`}>
-              <div className="relative">
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              aria-label={label}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                padding: '10px 0 8px',
+                gap: 3,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                position: 'relative',
+                color: active ? '#9FD46A' : '#4A6336',
+                transition: 'color 0.15s',
+              }}
+            >
+              <div style={{ position: 'relative' }}>
                 <Icon size={20} strokeWidth={active ? 2.2 : 1.6} />
                 {hasAlert && (
-                  <span className="absolute -top-1 -right-1.5 bg-farm-terra text-white text-[8px]
-                    w-4 h-4 rounded-full flex items-center justify-center font-mono font-bold">
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: -4,
+                      right: -6,
+                      background: '#DC3C28',
+                      color: '#fff',
+                      fontSize: 8,
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontWeight: 700,
+                      width: 15,
+                      height: 15,
+                      borderRadius: 99,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     {debtorCount}
                   </span>
                 )}
               </div>
-              <span className={`text-[10px] font-medium ${active ? 'text-farm-green' : 'text-gray-400'}`}>
-                {label}
-              </span>
-              {active && <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-farm-green rounded-full" />}
+              <span style={{ fontSize: 10, fontWeight: 600 }}>{label}</span>
+              {active && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: '25%',
+                    right: '25%',
+                    height: 2,
+                    background: 'linear-gradient(90deg, #7AB548, #5A9430)',
+                    borderRadius: 99,
+                  }}
+                />
+              )}
             </button>
           )
         })}

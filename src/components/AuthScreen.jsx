@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Egg, LogIn, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 export default function AuthScreen() {
@@ -9,11 +9,10 @@ export default function AuthScreen() {
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [info, setInfo] = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
-    setError(''); setInfo('')
+    setError('')
     if (!email.trim() || !pass.trim()) return setError('Email and password are required.')
     if (pass.length < 6) return setError('Password must be at least 6 characters.')
     setLoading(true)
@@ -26,68 +25,132 @@ export default function AuthScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-farm-ivory flex flex-col items-center justify-center px-5"
-      style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-
-      {/* Brand */}
-      <div className="flex flex-col items-center mb-8">
-        <div className="w-16 h-16 bg-farm-green rounded-2xl flex items-center justify-center mb-3 shadow-md">
-          <Egg size={32} className="text-farm-amber-mid" />
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-5"
+      style={{
+        background: 'radial-gradient(ellipse at 50% 0%, #1C3A10 0%, #0E1A0A 60%)',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
+      {/* Logo mark */}
+      <div className="flex flex-col items-center mb-10">
+        <div
+          className="w-20 h-20 rounded-3xl flex items-center justify-center mb-4 relative"
+          style={{
+            background: 'linear-gradient(135deg, #2D5A18 0%, #1A3A0A 100%)',
+            border: '1px solid #3D6A22',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(122,181,72,0.1) inset',
+          }}
+        >
+          <span style={{ fontSize: 38 }}>🥚</span>
         </div>
-        <h1 className="text-2xl font-semibold text-farm-green tracking-tight">ROKDIV</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Egg Sales Tracker</p>
+        <h1
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            color: '#F0EDE8',
+            lineHeight: 1,
+          }}
+        >
+          ROKDIV
+        </h1>
+        <p style={{ color: '#4A6336', fontSize: 13, marginTop: 4 }}>Farm Egg Tracker</p>
       </div>
 
       {/* Card */}
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-base font-semibold text-gray-800 mb-5">
+      <div
+        className="w-full max-w-sm"
+        style={{
+          background: '#162010',
+          border: '1px solid #2D4020',
+          borderRadius: 20,
+          padding: '28px 24px',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.7)',
+        }}
+      >
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: '#F0EDE8', marginBottom: 20 }}>
           Sign in to your farm
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Email</label>
+            <label className="label">Email</label>
             <input
-              type="email" autoComplete="email" required
-              value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-farm-green/30 focus:border-farm-green transition-all"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="field"
               placeholder="you@email.com"
               style={{ fontSize: 16 }}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Password</label>
-            <div className="relative">
+            <label className="label">Password</label>
+            <div style={{ position: 'relative' }}>
               <input
-                type={showPw ? 'text' : 'password'} autoComplete="current-password" required
-                value={pass} onChange={e => setPass(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3.5 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-farm-green/30 focus:border-farm-green transition-all"
+                type={showPw ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                value={pass}
+                onChange={e => setPass(e.target.value)}
+                className="field"
                 placeholder="Enter password"
-                style={{ fontSize: 16 }}
+                style={{ fontSize: 16, paddingRight: 42 }}
               />
-              <button type="button" onClick={() => setShowPw(s => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <button
+                type="button"
+                onClick={() => setShowPw(s => !s)}
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: '#4A6336',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                }}
+              >
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
 
-          {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-          {info  && <p className="text-xs text-farm-green bg-farm-green-light rounded-lg px-3 py-2">{info}</p>}
+          {error && (
+            <div
+              style={{
+                background: 'rgba(220,60,40,0.1)',
+                border: '1px solid rgba(220,60,40,0.25)',
+                borderRadius: 10,
+                padding: '10px 14px',
+                fontSize: 12,
+                color: '#F07060',
+              }}
+            >
+              {error}
+            </div>
+          )}
 
-          <button type="submit" disabled={loading}
-            className="w-full bg-farm-green text-white rounded-xl py-3 font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-60">
-            {loading
-              ? <><Loader2 size={15} className="animate-spin" /> Signing in…</>
-              : <><LogIn size={15} /> Sign In</>
-            }
+          <button type="submit" disabled={loading} className="btn-primary" style={{ marginTop: 4 }}>
+            {loading ? (
+              <>
+                <Loader2 size={15} className="animate-spin" /> Signing in…
+              </>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
       </div>
 
-      <p className="mt-6 text-[11px] text-gray-400 text-center max-w-xs">
-        Your data is securely stored in the cloud and syncs across all your devices.
+      <p style={{ marginTop: 24, fontSize: 11, color: '#2D4020', textAlign: 'center', maxWidth: 260 }}>
+        Data syncs securely across all your devices via Supabase.
       </p>
     </div>
   )

@@ -8,6 +8,7 @@ export default function CrateInventoryCard({ inventory, cratesOut, loading, onSe
 
   const totalOwned = inventory?.total_owned ?? 0
   const inFarm     = Math.max(0, totalOwned - cratesOut)
+  const pctOut     = totalOwned > 0 ? Math.round((cratesOut / totalOwned) * 100) : 0
 
   async function handleSave() {
     const val = parseInt(input, 10)
@@ -17,62 +18,157 @@ export default function CrateInventoryCard({ inventory, cratesOut, loading, onSe
   }
 
   if (loading) return (
-    <div className="mx-4 bg-white rounded-2xl border border-gray-200 p-4 flex items-center justify-center gap-2 text-gray-400 text-sm">
-      <Loader2 size={15} className="animate-spin" /> Loading crates…
+    <div
+      className="mx-4 flex items-center justify-center gap-2"
+      style={{
+        background: '#162010',
+        border: '1px solid #2D4020',
+        borderRadius: 16,
+        padding: 20,
+        color: '#4A6336',
+        fontSize: 13,
+      }}
+    >
+      <Loader2 size={14} className="animate-spin" /> Loading crates…
     </div>
   )
 
   return (
-    <div className="mx-4 bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div
+      className="mx-4"
+      style={{
+        background: '#162010',
+        border: '1px solid #2D4020',
+        borderRadius: 16,
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+      }}
+    >
       {/* Header */}
-      <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <Package size={16} className="text-farm-amber" />
-          <span className="text-sm font-semibold text-gray-700">Crate Inventory</span>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          borderBottom: '1px solid #2D4020',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Package size={15} style={{ color: '#E8B75A' }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#F0EDE8' }}>Crate Inventory</span>
         </div>
-        <button onClick={() => { setEditing(e => !e); setInput(String(totalOwned)) }}
-          className="text-gray-400 hover:text-farm-green transition-colors p-1 rounded-lg hover:bg-farm-green-light">
-          <Settings2 size={15} />
+        <button
+          onClick={() => { setEditing(e => !e); setInput(String(totalOwned)) }}
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            background: editing ? 'rgba(122,181,72,0.15)' : 'transparent',
+            border: '1px solid transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: editing ? '#9FD46A' : '#4A6336',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+        >
+          <Settings2 size={14} />
         </button>
       </div>
 
-      {/* Set total owned */}
+      {/* Edit total */}
       {editing && (
-        <div className="px-4 py-3 bg-farm-amber-light/30 border-b border-amber-100 flex items-center gap-2">
-          <label className="text-xs text-gray-500 font-medium whitespace-nowrap">Total owned:</label>
+        <div
+          className="slide-up"
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid #2D4020',
+            background: 'rgba(122,181,72,0.04)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <label style={{ fontSize: 11, color: '#6A806A', whiteSpace: 'nowrap', fontWeight: 500 }}>
+            Total owned:
+          </label>
           <input
-            type="number" inputMode="numeric" value={input}
+            type="number"
+            inputMode="numeric"
+            value={input}
             onChange={e => setInput(e.target.value)}
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-farm-green/30 focus:border-farm-green"
-            style={{ fontSize: 16 }} autoFocus
+            className="field"
+            style={{ fontSize: 15, flex: 1, padding: '8px 12px' }}
+            autoFocus
           />
-          <button onClick={handleSave} disabled={saving}
-            className="bg-farm-green text-white text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1 disabled:opacity-60">
-            {saving ? <Loader2 size={12} className="animate-spin" /> : null} Save
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              background: 'linear-gradient(135deg, #7AB548, #5A9430)',
+              color: '#0E1A0A',
+              border: 'none',
+              borderRadius: 10,
+              padding: '8px 14px',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              whiteSpace: 'nowrap',
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            {saving && <Loader2 size={11} className="animate-spin" />} Save
           </button>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 divide-x divide-gray-100">
+      {/* Stats row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderBottom: cratesOut > 0 && totalOwned > 0 ? '1px solid #2D4020' : 'none' }}>
         {[
-          { icon: Package,      label: 'Total',    value: totalOwned, color: 'text-gray-700'       },
-          { icon: PackageCheck, label: 'In-Farm',  value: inFarm,     color: 'text-farm-green'     },
-          { icon: PackageOpen,  label: 'With Buyers', value: cratesOut, color: 'text-farm-amber'   },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="flex flex-col items-center py-3 gap-0.5">
-            <Icon size={16} className={color} />
-            <span className={`text-lg font-semibold num ${color}`}>{value}</span>
-            <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">{label}</span>
+          { icon: Package,      label: 'Total',     value: totalOwned, color: '#A8B8A0' },
+          { icon: PackageCheck, label: 'In Farm',   value: inFarm,     color: '#9FD46A' },
+          { icon: PackageOpen,  label: 'With Buyers', value: cratesOut, color: '#E8B75A' },
+        ].map(({ icon: Icon, label, value, color }, idx) => (
+          <div
+            key={label}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              padding: '14px 8px',
+              borderRight: idx < 2 ? '1px solid #2D4020' : 'none',
+            }}
+          >
+            <Icon size={15} style={{ color, marginBottom: 4 }} />
+            <span className="num" style={{ fontSize: 20, fontWeight: 600, color, lineHeight: 1 }}>{value}</span>
+            <span style={{ fontSize: 10, color: '#4A6336', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 3 }}>{label}</span>
           </div>
         ))}
       </div>
 
-      {inFarm === 0 && totalOwned > 0 && (
-        <div className="px-4 py-2 bg-farm-amber-light border-t border-amber-100">
-          <p className="text-[11px] text-farm-amber font-medium text-center">
-            ⚠️ All crates are currently with buyers
-          </p>
+      {/* Progress bar — % out with buyers */}
+      {totalOwned > 0 && cratesOut > 0 && (
+        <div style={{ padding: '10px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+            <span style={{ fontSize: 10, color: '#4A6336', fontWeight: 500 }}>With buyers</span>
+            <span className="num" style={{ fontSize: 10, color: '#E8B75A', fontWeight: 600 }}>{pctOut}%</span>
+          </div>
+          <div className="progress-track">
+            <div
+              className={`progress-fill ${pctOut > 70 ? 'progress-fill-warn' : ''}`}
+              style={{ width: `${pctOut}%` }}
+            />
+          </div>
+          {inFarm === 0 && (
+            <p style={{ fontSize: 11, color: '#E8B75A', textAlign: 'center', marginTop: 8, fontWeight: 500 }}>
+              All crates are currently with buyers
+            </p>
+          )}
         </div>
       )}
     </div>
