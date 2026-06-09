@@ -189,7 +189,7 @@ export default function App() {
           <CollectionForm collections={collections || []} onSave={handleAddCollection} onDelete={() => {}} onQueueOffline={() => {}} showToast={showToast} />
         )}
         {activeTab === 'sales' && (
-          <SalesForm sales={sales || []} cratesInFarm={inventory?.totalOwned ?? 0} onSave={handleAddSale} onDelete={() => {}} onMarkPaid={handleMarkPaid} onQueueOffline={() => {}} showToast={showToast} />
+          <SalesForm sales={sales || []} cratesInFarm={inventory?.total_owned ?? 0} onSave={handleAddSale} onDelete={() => {}} onMarkPaid={handleMarkPaid} onQueueOffline={() => {}} showToast={showToast} />
         )}
         {activeTab === 'credit' && (
           <CreditTracker
