@@ -4,7 +4,7 @@ import { History, Download } from 'lucide-react'
 import { fmtDate, fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
 import { exportSalesCSV, exportCollectionsCSV } from '../utils/exportUtils.js'
 
-export default function HistoryLog({ sales, collections, onClearAll, showToast }) {
+export default function HistoryLog({ sales, collections, onClearAll, showToast, isAdmin }) {
   const [tab, setTab] = useState('sales')
   const sorted = tab === 'sales'
     ? [...sales].sort((a,b) => a.date < b.date ? 1 : -1)
@@ -78,14 +78,16 @@ export default function HistoryLog({ sales, collections, onClearAll, showToast }
         </div>
       </div>
 
-      {/* Danger zone */}
-      <div style={{ ...card, padding:'16px 18px', border:'1.5px solid #FECACA', boxShadow:'none' }}>
-        <p style={{ fontSize:12, fontWeight:700, color:'#DC2626', marginBottom:4 }}>Danger Zone</p>
-        <p style={{ fontSize:11, color:'#9CA3AF', marginBottom:12 }}>Export your data before clearing.</p>
-        <button onClick={()=>{ if(window.confirm('Delete ALL records permanently?')) onClearAll() }} className="btn-danger">
-          Clear All Data
-        </button>
-      </div>
+      {/* Danger zone - admin only */}
+      {isAdmin && (
+        <div style={{ ...card, padding:'16px 18px', border:'1.5px solid #FECACA', boxShadow:'none' }}>
+          <p style={{ fontSize:12, fontWeight:700, color:'#DC2626', marginBottom:4 }}>Danger Zone</p>
+          <p style={{ fontSize:11, color:'#9CA3AF', marginBottom:12 }}>Export your data before clearing.</p>
+          <button onClick={()=>{ if(window.confirm('Delete ALL records permanently?')) onClearAll() }} className="btn-danger">
+            Clear All Data
+          </button>
+        </div>
+      )}
     </div>
   )
 }

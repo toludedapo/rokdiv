@@ -227,7 +227,7 @@ export default function App() {
           />
         )}
         {activeTab === 'history' && (
-          <HistoryLog collections={collections} sales={sales} onClearAll={() => {}} showToast={showToast} />
+          <HistoryLog collections={collections} sales={sales} onClearAll={() => {}} showToast={showToast} isAdmin={isAdmin} />
         )}
         {activeTab === 'users' && isAdmin && (
           <UserManager adminEmail={ADMIN_EMAIL} />
