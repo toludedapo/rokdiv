@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
-const fmt = (n) => `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`
+const NAIRA = String.fromCharCode(0x20A6)
+const fmt = (n) => NAIRA + Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0 })
 
 export default function SummaryCards({ collections, sales, expenses = [] }) {
   const now = new Date()
@@ -183,9 +184,29 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
           </div>
         )}
       </div>
+
+      {/* Quick Actions */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
+        <button onClick={() => window.dispatchEvent(new CustomEvent('rokdiv-nav', { detail: 'collect' }))}
+          style={qaBtn('#10B981', '#ECFDF5', '#A7F3D0')}>
+          <span style={{ fontSize: '20px' }}>🥚</span>
+          <span style={{ fontSize: '13px', fontWeight: 700 }}>Log Collection</span>
+        </button>
+        <button onClick={() => window.dispatchEvent(new CustomEvent('rokdiv-nav', { detail: 'sales' }))}
+          style={qaBtn('#4F6EF7', '#EEF1FF', '#C7D2FE')}>
+          <span style={{ fontSize: '20px' }}>🛒</span>
+          <span style={{ fontSize: '13px', fontWeight: 700 }}>Record Sale</span>
+        </button>
+      </div>
     </div>
   )
 }
+
+const qaBtn = (color, bg, border) => ({
+  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+  gap: '6px', padding: '16px 8px', background: bg, border: `1.5px solid ${border}`,
+  borderRadius: '14px', cursor: 'pointer', color, transition: 'opacity 0.15s ease'
+})
 
 const cardBase = {
   background: 'white',

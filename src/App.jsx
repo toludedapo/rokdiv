@@ -51,6 +51,13 @@ export default function App() {
     ? [...NAV_TABS, { id: 'users', icon: '👥', label: 'Users' }]
     : NAV_TABS
 
+  // Quick action navigation from dashboard buttons
+  useEffect(() => {
+    const handler = (e) => setActiveTab(e.detail)
+    window.addEventListener('rokdiv-nav', handler)
+    return () => window.removeEventListener('rokdiv-nav', handler)
+  }, [])
+
   useEffect(() => {
     const go   = () => setIsOnline(true)
     const gone = () => setIsOnline(false)

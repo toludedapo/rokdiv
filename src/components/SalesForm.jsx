@@ -4,7 +4,7 @@ import { todayISO, fmtDate, fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
 
 export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMarkPaid, onQueueOffline, showToast }) {
   const [open, setOpen] = useState(true)
-  const [form, setForm] = useState({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', crates_loaned: '', notes: '' })
+  const [form, setForm] = useState({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', payment_mode: 'Cash', crates_loaned: '', notes: '' })
   const [error,  setError]  = useState('')
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('All')
@@ -20,15 +20,15 @@ export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMar
     if (loaned > cratesInFarm) return setError(`Only ${cratesInFarm} crate(s) available.`)
     setError('')
     setSaving(true)
-    const payload = { date: form.date, customer_name: form.customer_name.trim(), crates: Number(form.crates)||0, singles: Number(form.singles)||0, amount: Number(form.amount), payment_status: form.payment_status, crates_loaned: loaned, crates_returned: 0, notes: form.notes.trim(), paid_at: form.payment_status === 'Paid' ? todayISO() : null }
+    const payload = { date: form.date, customer_name: form.customer_name.trim(), crates: Number(form.crates)||0, singles: Number(form.singles)||0, amount: Number(form.amount), payment_status: form.payment_status, payment_mode: form.payment_status === 'Paid' ? form.payment_mode : null, crates_loaned: loaned, crates_returned: 0, notes: form.notes.trim(), paid_at: form.payment_status === 'Paid' ? todayISO() : null }
     try {
       await onSave(payload)
-      setForm({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', crates_loaned: '', notes: '' })
+      setForm({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', payment_mode: 'Cash', crates_loaned: '', notes: '' })
       showToast('Sale recorded')
     } catch (e) {
       if (onQueueOffline) {
         onQueueOffline(payload)
-        setForm({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', crates_loaned: '', notes: '' })
+        setForm({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', payment_mode: 'Cash', crates_loaned: '', notes: '' })
         showToast('Saved offline 💾')
       } else { setError(e.message) }
     } finally { setSaving(false) }
@@ -69,6 +69,31 @@ export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMar
                 <option value="Credit">Credit</option>
               </select>
             </div>
+            {form.payment_status === 'Paid' && (
+              <div style={{ gridColumn: 'span 2' }}>
+                <label className="label">Payment Mode</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[
+                    { key: 'Cash',     icon: '💵' },
+                    { key: 'Transfer', icon: '📲' },
+                    { key: 'POS',      icon: '🖥️' },
+                  ].map(({ key, icon }) => (
+                    <button key={key} type="button"
+                      onClick={() => set('payment_mode', key)}
+                      style={{
+                        flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                        border: `1.5px solid ${form.payment_mode === key ? '#4F6EF7' : '#E5E7EB'}`,
+                        background: form.payment_mode === key ? '#EEF1FF' : '#FAFAFA',
+                        color: form.payment_mode === key ? '#4F6EF7' : '#6B7280',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', gap: 5
+                      }}>
+                      {icon} {key}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <label className="label">Crates Sold</label>
               <input type="number" inputMode="numeric" className="field" placeholder="0" value={form.crates} onChange={e => set('crates', e.target.value)} style={{ fontSize: 16 }} />
@@ -117,7 +142,7 @@ export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMar
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{s.customer_name}</span>
                           <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: s.payment_status==='Paid' ? '#ECFDF5' : '#FFFBEB', color: s.payment_status==='Paid' ? '#059669' : '#D97706', border: `1px solid ${s.payment_status==='Paid' ? '#A7F3D0' : '#FDE68A'}` }}>
-                            {s.payment_status}
+                            {s.payment_status}{s.payment_mode ? ` · ${s.payment_mode}` : ''}
                           </span>
                           {s.isOffline && <span className="badge-offline">💾 Offline</span>}
                           {(s.crates_loaned-(s.crates_returned||0)) > 0 && (

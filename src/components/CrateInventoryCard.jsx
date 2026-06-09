@@ -54,16 +54,16 @@ export default function CrateInventoryCard({ inventory, cratesOut, loading, onSe
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
         {[
-          { icon: Package,      label: 'Total',     value: totalOwned, color: '#6B7280', bg: '#F3F4F6'  },
-          { icon: PackageCheck, label: 'In Farm',   value: inFarm,     color: '#059669', bg: '#ECFDF5'  },
-          { icon: PackageOpen,  label: 'With Buyers', value: cratesOut, color: '#D97706', bg: '#FFFBEB' },
+          { icon: Package,      label: 'Total',       value: totalOwned, color: '#4F6EF7', bg: '#EEF1FF'  },
+          { icon: PackageCheck, label: 'In Farm',     value: inFarm,     color: '#059669', bg: '#ECFDF5'  },
+          { icon: PackageOpen,  label: 'With Buyers', value: cratesOut,  color: '#D97706', bg: '#FFFBEB' },
         ].map(({ icon: Icon, label, value, color, bg }, idx) => (
-          <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 8px', borderRight: idx < 2 ? '1px solid #F3F4F6' : 'none' }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-              <Icon size={13} style={{ color }} />
+          <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '18px 8px', borderRight: idx < 2 ? '1px solid #F3F4F6' : 'none' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8, boxShadow: `0 2px 6px ${color}25` }}>
+              <Icon size={16} style={{ color }} />
             </div>
-            <span className="num" style={{ fontSize: 20, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{value}</span>
-            <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 3 }}>{label}</span>
+            <span className="num" style={{ fontSize: 24, fontWeight: 800, color: '#111827', lineHeight: 1 }}>{value}</span>
+            <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 4 }}>{label}</span>
           </div>
         ))}
       </div>
