@@ -1,16 +1,15 @@
 import React, { useState } from 'react'
-import { Egg, LogIn, UserPlus, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Egg, LogIn, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 export default function AuthScreen() {
-  const { signIn, signUp } = useAuth()
-  const [mode,    setMode]    = useState('login')   // 'login' | 'signup'
-  const [email,   setEmail]   = useState('')
-  const [pass,    setPass]    = useState('')
-  const [showPw,  setShowPw]  = useState(false)
+  const { signIn } = useAuth()
+  const [email, setEmail] = useState('')
+  const [pass, setPass] = useState('')
+  const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState('')
-  const [info,    setInfo]    = useState('')
+  const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -19,14 +18,8 @@ export default function AuthScreen() {
     if (pass.length < 6) return setError('Password must be at least 6 characters.')
     setLoading(true)
     try {
-      if (mode === 'login') {
-        const { error } = await signIn(email.trim(), pass)
-        if (error) setError(error.message)
-      } else {
-        const { error } = await signUp(email.trim(), pass)
-        if (error) setError(error.message)
-        else setInfo('Account created! Check your email to confirm, then log in.')
-      }
+      const { error } = await signIn(email.trim(), pass)
+      if (error) setError(error.message)
     } finally {
       setLoading(false)
     }
@@ -48,7 +41,7 @@ export default function AuthScreen() {
       {/* Card */}
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-base font-semibold text-gray-800 mb-5">
-          {mode === 'login' ? 'Sign in to your farm' : 'Create your account'}
+          Sign in to your farm
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -67,10 +60,10 @@ export default function AuthScreen() {
             <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Password</label>
             <div className="relative">
               <input
-                type={showPw ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required
+                type={showPw ? 'text' : 'password'} autoComplete="current-password" required
                 value={pass} onChange={e => setPass(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3.5 py-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-farm-green/30 focus:border-farm-green transition-all"
-                placeholder="Min. 6 characters"
+                placeholder="Enter password"
                 style={{ fontSize: 16 }}
               />
               <button type="button" onClick={() => setShowPw(s => !s)}
@@ -86,21 +79,11 @@ export default function AuthScreen() {
           <button type="submit" disabled={loading}
             className="w-full bg-farm-green text-white rounded-xl py-3 font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-60">
             {loading
-              ? <><Loader2 size={15} className="animate-spin" /> {mode === 'login' ? 'Signing in…' : 'Creating account…'}</>
-              : mode === 'login'
-                ? <><LogIn size={15} /> Sign In</>
-                : <><UserPlus size={15} /> Create Account</>
+              ? <><Loader2 size={15} className="animate-spin" /> Signing in…</>
+              : <><LogIn size={15} /> Sign In</>
             }
           </button>
         </form>
-
-        <p className="text-center text-xs text-gray-400 mt-4">
-          {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-          <button onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setError(''); setInfo('') }}
-            className="text-farm-green font-medium underline underline-offset-2">
-            {mode === 'login' ? 'Sign up' : 'Sign in'}
-          </button>
-        </p>
       </div>
 
       <p className="mt-6 text-[11px] text-gray-400 text-center max-w-xs">
