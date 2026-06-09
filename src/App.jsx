@@ -186,10 +186,10 @@ export default function App() {
           <SummaryCards collections={collections} sales={sales} expenses={expenses} />
         )}
         {activeTab === 'collect' && (
-          <CollectionForm onAdd={handleAddCollection} inventory={inventory} />
+          <CollectionForm collections={collections} onSave={handleAddCollection} onQueueOffline={() => {}} showToast={showToast} />
         )}
         {activeTab === 'sales' && (
-          <SalesForm onAdd={handleAddSale} inventory={inventory} />
+          <SalesForm sales={sales} cratesInFarm={inventory?.totalOwned || 0} onSave={handleAddSale} onMarkPaid={handleMarkPaid} onQueueOffline={() => {}} showToast={showToast} />
         )}
         {activeTab === 'credit' && (
           <CreditTracker
