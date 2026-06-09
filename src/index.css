@@ -6,12 +6,12 @@
 
 @layer base {
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-  
+
   body {
-    background: #0E1A0A;
+    background: #F0F2F5;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     overscroll-behavior: none;
-    color: #F0EDE8;
+    color: #111827;
   }
 
   input[type="number"]::-webkit-inner-spin-button,
@@ -19,85 +19,99 @@
 }
 
 @layer components {
-  /* ─── Numbers always tabular ─── */
+
+  /* ─── Numbers ─── */
   .num {
     font-family: 'JetBrains Mono', 'SF Mono', monospace;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
 
+  /* ─── Card ─── */
+  .card {
+    background: #FFFFFF;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    overflow: hidden;
+  }
+
   /* ─── Form fields ─── */
   .field {
     @apply w-full rounded-xl px-3.5 py-3 text-sm transition-all;
-    background: #1C2A14;
-    border: 1px solid #2D4020;
-    color: #F0EDE8;
+    background: #F8F9FB;
+    border: 1.5px solid #E5E7EB;
+    color: #111827;
     outline: none;
   }
   .field:focus {
-    border-color: #7AB548;
-    box-shadow: 0 0 0 3px rgba(122,181,72,0.15);
+    border-color: #4F6EF7;
+    background: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(79,110,247,0.12);
   }
-  .field::placeholder { color: #4A6336; }
+  .field::placeholder { color: #9CA3AF; }
+  select.field option { background: #fff; color: #111827; }
 
-  select.field option { background: #1C2A14; color: #F0EDE8; }
-
-  /* ─── Cards ─── */
-  .card {
-    background: #162010;
-    border: 1px solid #2D4020;
-    border-radius: 16px;
-    overflow: hidden;
-  }
-  .card-surface {
-    background: #1C2A14;
-    border: 1px solid #2D4020;
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  /* ─── Badges ─── */
-  .badge-green  { background: rgba(122,181,72,0.15);  color: #9FD46A; border: 1px solid rgba(122,181,72,0.25); border-radius: 99px; padding: 2px 8px; font-size: 10px; font-weight: 600; }
-  .badge-yellow { background: rgba(224,160,48,0.15);  color: #E8B75A; border: 1px solid rgba(224,160,48,0.25); border-radius: 99px; padding: 2px 8px; font-size: 10px; font-weight: 600; }
-  .badge-red    { background: rgba(220,60,40,0.15);   color: #F07060; border: 1px solid rgba(220,60,40,0.25);  border-radius: 99px; padding: 2px 8px; font-size: 10px; font-weight: 600; }
-
-  /* ─── Primary button ─── */
-  .btn-primary {
-    @apply w-full rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50;
-    background: linear-gradient(135deg, #7AB548 0%, #5A9430 100%);
-    color: #0E1A0A;
-    box-shadow: 0 4px 14px rgba(90,148,48,0.35);
-  }
-  .btn-primary:hover { box-shadow: 0 6px 20px rgba(90,148,48,0.45); }
-
-  /* ─── Secondary button ─── */
-  .btn-secondary {
-    @apply rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] disabled:opacity-50;
-    background: #1C2A14;
-    border: 1px solid #2D4020;
-    color: #9FD46A;
-    padding: 8px 14px;
-  }
-
-  /* ─── Danger button ─── */
-  .btn-danger {
-    @apply rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.97] w-full py-2.5;
-    background: rgba(220,60,40,0.08);
-    border: 1px solid rgba(220,60,40,0.25);
-    color: #F07060;
-  }
-
-  /* ─── Section label ─── */
+  /* ─── Labels ─── */
   .label {
-    @apply block uppercase tracking-widest font-semibold;
-    color: #4A6336;
+    display: block;
     font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
     letter-spacing: 0.12em;
+    color: #9CA3AF;
     margin-bottom: 5px;
   }
 
+  /* ─── Badges ─── */
+  .badge-green  { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; border-radius: 99px; padding: 2px 8px; font-size: 10px; font-weight: 600; display: inline-flex; align-items: center; }
+  .badge-yellow { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; border-radius: 99px; padding: 2px 8px; font-size: 10px; font-weight: 600; display: inline-flex; align-items: center; }
+  .badge-red    { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; border-radius: 99px; padding: 2px 8px; font-size: 10px; font-weight: 600; display: inline-flex; align-items: center; }
+  .badge-blue   { background: #EEF1FF; color: #4F6EF7; border: 1px solid #C7D2FE; border-radius: 99px; padding: 2px 8px; font-size: 10px; font-weight: 600; display: inline-flex; align-items: center; }
+  .badge-offline{ background: #EEF1FF; color: #6C8EFF; border: 1px solid #C7D2FE; border-radius: 99px; padding: 2px 8px; font-size: 10px; font-weight: 600; display: inline-flex; align-items: center; }
+
+  /* ─── Buttons ─── */
+  .btn-primary {
+    @apply w-full rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50;
+    background: linear-gradient(135deg, #4F6EF7 0%, #3B55E0 100%);
+    color: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(79,110,247,0.35);
+  }
+  .btn-primary:hover { box-shadow: 0 6px 20px rgba(79,110,247,0.45); }
+
+  .btn-secondary {
+    @apply rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] disabled:opacity-50;
+    background: #F3F4F6;
+    border: 1.5px solid #E5E7EB;
+    color: #374151;
+    padding: 8px 14px;
+  }
+  .btn-secondary:hover { background: #EEF1FF; border-color: #C7D2FE; color: #4F6EF7; }
+
+  .btn-danger {
+    @apply rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all active:scale-[0.97] w-full py-2.5;
+    background: #FEF2F2;
+    border: 1.5px solid #FECACA;
+    color: #DC2626;
+  }
+
   /* ─── Divider ─── */
-  .divider { border-top: 1px solid #2D4020; }
+  .divider { border-top: 1px solid #F3F4F6; }
+
+  /* ─── Progress bar ─── */
+  .progress-track {
+    height: 4px;
+    background: #E5E7EB;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #4F6EF7, #6C8EFF);
+    transition: width 0.5s ease;
+  }
+  .progress-fill-warn { background: linear-gradient(90deg, #D97706, #FBBF24); }
+  .progress-fill-green { background: linear-gradient(90deg, #059669, #34D399); }
 
   /* ─── Animations ─── */
   @keyframes pulse-badge { 0%,100%{opacity:1} 50%{opacity:.45} }
@@ -106,23 +120,45 @@
   @keyframes slide-up { from{transform:translateY(8px);opacity:0} to{transform:translateY(0);opacity:1} }
   .slide-up { animation: slide-up 0.2s ease-out; }
 
-  @keyframes toast-in  { from{transform:translateX(-50%) translateY(10px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
-  @keyframes toast-out { from{opacity:1} to{opacity:0} }
+  /* Low stock — amber border pulse */
+  @keyframes stock-warn {
+    0%,100% { box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-color: rgba(217,119,6,0.3); }
+    50%      { box-shadow: 0 0 0 4px rgba(217,119,6,0.12), 0 2px 12px rgba(0,0,0,0.07); border-color: rgba(217,119,6,0.7); }
+  }
+  .stock-warn { animation: stock-warn 2.2s ease-in-out infinite; border: 1.5px solid rgba(217,119,6,0.4) !important; }
 
-  /* ─── Progress bar (for partial payments) ─── */
-  .progress-track {
-    height: 4px;
-    background: #2D4020;
-    border-radius: 99px;
-    overflow: hidden;
+  /* Sync spin */
+  @keyframes sync-spin { to { transform: rotate(360deg); } }
+  .sync-spin { animation: sync-spin 1s linear infinite; }
+
+  /* Streak glow */
+  @keyframes streak-glow { 0%,100%{opacity:1} 50%{opacity:0.7} }
+  .streak-glow { animation: streak-glow 2s ease-in-out infinite; }
+
+  /* WhatsApp button */
+  .wa-btn {
+    background: linear-gradient(135deg, #128C7E, #25D366);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 10px 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
+    box-shadow: 0 4px 12px rgba(37,211,102,0.3);
   }
-  .progress-fill {
-    height: 100%;
-    border-radius: 99px;
-    background: linear-gradient(90deg, #5A9430, #9FD46A);
-    transition: width 0.5s ease;
-  }
-  .progress-fill-warn {
-    background: linear-gradient(90deg, #B07820, #E8B75A);
-  }
+  .wa-btn:active { transform: scale(0.97); }
+
+  /* Bottom sheet */
+  @keyframes sheet-in { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .sheet-in { animation: sheet-in 0.28s cubic-bezier(0.32,0.72,0,1); }
+
+  /* Notif pop */
+  @keyframes notif-pop { 0%{transform:scale(0)} 70%{transform:scale(1.2)} 100%{transform:scale(1)} }
+  .notif-pop { animation: notif-pop 0.3s ease-out forwards; }
 }
