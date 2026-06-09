@@ -1,278 +1,364 @@
-import React, { useMemo, useState } from 'react'
-import { AlertCircle, CheckCircle, Package, PackageCheck, Loader2, CreditCard, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
-import { fmtDate, fmtNaira, overdueInfo, crateOverdueInfo, CRATE_SIZE, todayISO } from '../utils/dateUtils.js'
-import CustomerSheet from './CustomerSheet.jsx'
+import { useState, useMemo } from 'react'
 
-export function computeDebtors(sales, payments = []) {
-  const creditSales = sales.filter(s => s.payment_status === 'Credit')
-  const paidBySale  = {}
-  for (const p of payments) paidBySale[p.sale_id] = (paidBySale[p.sale_id] || 0) + Number(p.amount)
-  const map = {}
-  for (const s of creditSales) {
-    const key = s.customer_name?.trim().toLowerCase()
-    if (!key) continue
-    const bal = Math.max(0, Number(s.amount) - (paidBySale[s.id] || 0))
-    if (!map[key]) map[key] = { name: s.customer_name.trim(), owed: 0, eggs: 0, oldest: s.date, sales: [], cratesOut: 0, oldestCrateDate: null, totalPaid: 0, totalAmount: 0 }
-    map[key].totalAmount += Number(s.amount)
-    map[key].totalPaid   += (paidBySale[s.id] || 0)
-    map[key].owed        += bal
-    map[key].eggs        += s.crates * CRATE_SIZE + s.singles
-    map[key].sales.push({ ...s, balance: bal, paid: paidBySale[s.id] || 0 })
-    if (s.date < map[key].oldest) map[key].oldest = s.date
-    const net = (s.crates_loaned||0) - (s.crates_returned||0)
-    if (net > 0) { map[key].cratesOut += net; if (!map[key].oldestCrateDate || s.date < map[key].oldestCrateDate) map[key].oldestCrateDate = s.date }
-  }
-  return Object.values(map).filter(d => d.owed > 0).sort((a,b) => a.oldest > b.oldest ? 1 : -1)
+const fmt = (n) => `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`
+
+function agingLabel(sale) {
+  const days = Math.floor((Date.now() - new Date(sale.date)) / 86400000)
+  if (days <= 7)  return { label: `${days}d`,          color: '#10B981', bg: '#D1FAE5', urgent: false }
+  if (days <= 14) return { label: `${days}d`,          color: '#F59E0B', bg: '#FEF3C7', urgent: false }
+  return           { label: `${days}d overdue`,        color: '#EF4444', bg: '#FEE2E2', urgent: true  }
 }
 
-function buildAllCustomers(sales, payments = []) {
-  const paidBySale = {}
-  for (const p of payments) paidBySale[p.sale_id] = (paidBySale[p.sale_id] || 0) + Number(p.amount)
-  const map = {}
-  for (const s of sales) {
-    const key = s.customer_name?.trim().toLowerCase()
-    if (!key) continue
-    if (!map[key]) map[key] = { name: s.customer_name.trim(), sales: [], owed: 0, oldest: s.date }
-    map[key].sales.push(s)
-    if (s.payment_status === 'Credit') map[key].owed += Math.max(0, Number(s.amount) - (paidBySale[s.id] || 0))
-    if (s.date < map[key].oldest) map[key].oldest = s.date
-  }
-  return map
-}
+export default function CreditTracker({
+  sales, onMarkPaid, payments = [], onAddPayment, onDeletePayment, isAdmin
+}) {
+  const [expandedCustomer, setExpandedCustomer] = useState(null)
+  const [partialCustomer, setPartialCustomer]   = useState(null)
+  const [partialForm, setPartialForm] = useState({ amount: '', method: 'Cash', notes: '' })
+  const [saving, setSaving]       = useState(false)
+  const [markingPaid, setMarkingPaid] = useState(null)
+  const [deletingPayment, setDeletingPayment] = useState(null)
 
-export default function CreditTracker({ sales, payments = [], onMarkPaid, onReturnCrates, onAddPayment, showToast }) {
-  const debtors   = useMemo(() => computeDebtors(sales, payments), [sales, payments])
-  const allCust   = useMemo(() => buildAllCustomers(sales, payments), [sales, payments])
-  const totalDebt = debtors.reduce((s, d) => s + d.owed, 0)
-  const [state,         setState]         = useState({})
-  const [sheetCustomer, setSheetCustomer] = useState(null)
+  const debtors = useMemo(() => {
+    const creditSales = sales.filter(s => s.payment_type === 'credit' && !s.paid)
+    const map = {}
+    creditSales.forEach(s => {
+      const name = s.customer_name || 'Unknown'
+      if (!map[name]) map[name] = { name, sales: [], total: 0, oldest: s.date }
+      map[name].sales.push(s)
+      map[name].total += parseFloat(s.amount || 0)
+      if (s.date < map[name].oldest) map[name].oldest = s.date
+    })
+    return Object.values(map).sort((a, b) => new Date(a.oldest) - new Date(b.oldest))
+  }, [sales])
 
-  function getS(key) { return state[key] || { crateOpen:false, payOpen:false, crateQty:'', payAmt:'', payNotes:'', payMethod:'Cash', saving:false } }
-  function setS(key, patch) { setState(s => ({ ...s, [key]: { ...getS(key), ...patch } })) }
+  const totalOutstanding = debtors.reduce((s, d) => s + d.total, 0)
 
-  function openSheet(name) {
-    const k = name.trim().toLowerCase()
-    if (allCust[k]) setSheetCustomer(allCust[k])
-  }
-
-  async function submitReturn(debtor) {
-    const key = debtor.name.toLowerCase()
-    const qty = parseInt(getS(key).crateQty, 10)
-    if (isNaN(qty)||qty<=0) return showToast('Enter a valid crate count')
-    if (qty>debtor.cratesOut) return showToast(`Only ${debtor.cratesOut} crates out`)
-    setS(key,{saving:true})
-    try {
-      let rem = qty
-      for (const s of [...debtor.sales].sort((a,b)=>a.date<b.date?1:-1)) {
-        if (rem<=0) break
-        const net=(s.crates_loaned||0)-(s.crates_returned||0)
-        if (net<=0) continue
-        const apply=Math.min(rem,net)
-        await onReturnCrates(s.id,(s.crates_returned||0)+apply)
-        rem-=apply
-      }
-      showToast(`${qty} crate${qty!==1?'s':''} returned`)
-      setS(key,{saving:false,crateOpen:false,crateQty:''})
-    } catch(e) { showToast('Error: '+e.message); setS(key,{saving:false}) }
+  function paidForSale(saleId) {
+    return payments
+      .filter(p => p.sale_id === saleId)
+      .reduce((s, p) => s + parseFloat(p.amount || 0), 0)
   }
 
-  async function submitPayment(debtor) {
-    const key = debtor.name.toLowerCase()
-    const s   = getS(key)
-    const amt = Number(s.payAmt)
-    if (!amt||amt<=0) return showToast('Enter a valid amount')
-    if (amt>debtor.owed) return showToast(`Max ${fmtNaira(debtor.owed)}`)
-    setS(key,{saving:true})
-    const noteText = [s.payMethod||'Cash', s.payNotes.trim()].filter(Boolean).join(' - ')
-    try {
-      let rem = amt
-      for (const sale of [...debtor.sales].sort((a,b)=>a.date>b.date?1:-1)) {
-        if (rem<=0) break
-        if (sale.balance<=0) continue
-        const apply=Math.min(rem,sale.balance)
-        await onAddPayment({sale_id:sale.id,amount:apply,date:todayISO(),notes:noteText||null})
-        rem-=apply
-      }
-      showToast(`${s.payMethod||'Cash'} payment of ${fmtNaira(amt)} recorded`)
-      setS(key,{saving:false,payOpen:false,payAmt:'',payNotes:'',payMethod:'Cash'})
-    } catch(e) { showToast('Error: '+e.message); setS(key,{saving:false}) }
+  function paidForCustomer(customerName) {
+    const saleIds = new Set(
+      sales.filter(s => (s.customer_name || 'Unknown') === customerName).map(s => s.id)
+    )
+    return payments
+      .filter(p => saleIds.has(p.sale_id))
+      .reduce((s, p) => s + parseFloat(p.amount || 0), 0)
   }
 
-  if (!debtors.length) return (
-    <>
-      <div className="mx-4" style={{ background:'#FFFFFF', borderRadius:16, boxShadow:'0 2px 12px rgba(0,0,0,0.07)', border:'1.5px solid #F3F4F6', padding:'32px 24px', textAlign:'center' }}>
-        <div style={{width:56,height:56,borderRadius:16,background:'#ECFDF5',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}>
-          <CheckCircle size={28} style={{color:'#059669'}}/>
-        </div>
-        <p style={{fontSize:15,fontWeight:700,color:'#111827'}}>All clear!</p>
-        <p style={{fontSize:13,color:'#9CA3AF',marginTop:4}}>No outstanding balances.</p>
+  function paymentsForCustomer(customerName) {
+    const saleIds = new Set(
+      sales.filter(s => (s.customer_name || 'Unknown') === customerName).map(s => s.id)
+    )
+    return payments.filter(p => saleIds.has(p.sale_id))
+  }
+
+  async function handleMarkPaid(saleId) {
+    setMarkingPaid(saleId)
+    await onMarkPaid(saleId)
+    setMarkingPaid(null)
+  }
+
+  async function handlePartialSubmit(debtor) {
+    if (!partialForm.amount || parseFloat(partialForm.amount) <= 0) return
+    setSaving(true)
+    const notes = partialForm.method + (partialForm.notes ? ` - ${partialForm.notes}` : '')
+    let remaining = parseFloat(partialForm.amount)
+    const sorted = [...debtor.sales].sort((a, b) => new Date(a.date) - new Date(b.date))
+    for (const sale of sorted) {
+      if (remaining <= 0) break
+      const alreadyPaid = paidForSale(sale.id)
+      const owed = parseFloat(sale.amount) - alreadyPaid
+      if (owed <= 0) continue
+      const applying = Math.min(owed, remaining)
+      await onAddPayment({ sale_id: sale.id, amount: applying, date: new Date().toISOString().slice(0,10), notes })
+      remaining -= applying
+    }
+    setSaving(false)
+    setPartialCustomer(null)
+    setPartialForm({ amount: '', method: 'Cash', notes: '' })
+  }
+
+  async function handleDeletePayment(paymentId) {
+    setDeletingPayment(paymentId)
+    await onDeletePayment(paymentId)
+    setDeletingPayment(null)
+  }
+
+  function buildWhatsApp(debtor) {
+    const salesList = debtor.sales.map(s =>
+      `• ${new Date(s.date).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' })}: ${fmt(s.amount)}`
+    ).join('\n')
+    const msg = encodeURIComponent(
+      `Hello ${debtor.name},\n\nThis is a reminder that you have an outstanding balance of *${fmt(debtor.total)}* for eggs purchased from ROKDIV Farm.\n\nDetails:\n${salesList}\n\nKindly settle at your earliest convenience. Thank you!`
+    )
+    return `https://wa.me/?text=${msg}`
+  }
+
+  if (debtors.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9CA3AF' }}>
+        <div style={{ fontSize: '40px', marginBottom: '12px' }}>✅</div>
+        <p style={{ fontWeight: 700, color: '#111827', fontSize: '16px', margin: '0 0 4px' }}>All clear</p>
+        <p style={{ fontSize: '13px', margin: 0 }}>No outstanding credit balances</p>
       </div>
-      <CustomerDirectory customers={allCust} onOpen={openSheet}/>
-      {sheetCustomer && <CustomerSheet customer={sheetCustomer} onClose={()=>setSheetCustomer(null)}/>}
-    </>
-  )
+    )
+  }
 
   return (
-    <>
-      <div className="mx-4" style={{display:'flex',flexDirection:'column',gap:12}}>
-
-        {/* Banner */}
-        <div style={{background:'#FEF2F2',border:'1.5px solid #FECACA',borderRadius:16,padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 2px 8px rgba(220,38,38,0.08)'}}>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <div style={{width:32,height:32,borderRadius:10,background:'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <AlertCircle size={16} style={{color:'#DC2626'}}/>
-            </div>
-            <span style={{fontSize:13,fontWeight:700,color:'#DC2626'}}>{debtors.length} debtor{debtors.length!==1?'s':''}</span>
-          </div>
-          <div style={{textAlign:'right'}}>
-            <p style={{fontSize:9,color:'#EF4444',textTransform:'uppercase',letterSpacing:'0.1em',fontWeight:700}}>Total owed</p>
-            <p className="num" style={{fontSize:20,fontWeight:700,color:'#DC2626'}}>{fmtNaira(totalDebt)}</p>
-          </div>
+    <div style={{ paddingBottom: '100px' }}>
+      {/* Summary row */}
+      <div style={{
+        background: '#FEF3C7', borderRadius: '12px', padding: '12px 14px',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: '16px', border: '1px solid #FDE68A'
+      }}>
+        <div>
+          <p style={{ margin: '0 0 2px', fontSize: '11px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Total Outstanding
+          </p>
+          <p style={{ margin: 0, fontSize: '22px', fontWeight: 800, color: '#B45309' }}>{fmt(totalOutstanding)}</p>
         </div>
-
-        {/* Legend */}
-        <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center',paddingLeft:2}}>
-          <span style={{fontSize:10,color:'#9CA3AF',fontWeight:600}}>Age:</span>
-          {[['badge-green','< 3 days'],['badge-yellow','3-7 days'],['badge-red','7+ days']].map(([cls,lbl])=>(
-            <span key={cls} className={cls}>{lbl}</span>
-          ))}
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ margin: '0 0 2px', fontSize: '11px', color: '#92400E' }}>
+            {debtors.length} debtor{debtors.length !== 1 ? 's' : ''}
+          </p>
+          <p style={{ margin: 0, fontSize: '11px', color: '#B45309' }}>
+            {debtors.filter(d => Math.floor((Date.now() - new Date(d.oldest)) / 86400000) > 14).length} overdue &gt;14 days
+          </p>
         </div>
+      </div>
 
-        {/* Debtor cards */}
-        {debtors.map(d => {
-          const {cls,label,tier} = overdueInfo(d.oldest)
-          const crateAlert = crateOverdueInfo(d.oldestCrateDate)
-          const key  = d.name.toLowerCase()
-          const s    = getS(key)
-          const pct  = d.totalAmount > 0 ? Math.round((d.totalPaid/d.totalAmount)*100) : 0
+      {/* Debtor cards */}
+      {debtors.map(debtor => {
+        const totalPaid  = paidForCustomer(debtor.name)
+        const balance    = debtor.total - totalPaid
+        const pct        = debtor.total > 0 ? Math.min(100, (totalPaid / debtor.total) * 100) : 0
+        const isExpanded = expandedCustomer === debtor.name
+        const isPartialOpen = partialCustomer === debtor.name
+        const customerPayments = paymentsForCustomer(debtor.name)
 
-          return (
-            <div key={key} style={{background:'#FFFFFF',borderRadius:16,border:`1.5px solid ${tier==='alert'?'#FECACA':tier==='warn'?'#FDE68A':'#F3F4F6'}`,boxShadow:'0 2px 12px rgba(0,0,0,0.07)',overflow:'hidden'}}>
-              <div style={{padding:'16px 18px'}}>
-                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap',marginBottom:4}}>
-                      <button onClick={()=>openSheet(d.name)} style={{background:'none',border:'none',cursor:'pointer',padding:0,display:'flex',alignItems:'center',gap:4}}>
-                        <span style={{fontSize:14,fontWeight:700,color:'#111827',textDecoration:'underline',textUnderlineOffset:3,textDecorationStyle:'dotted',textDecorationColor:'#D1D5DB'}}>{d.name}</span>
-                        <ExternalLink size={11} style={{color:'#9CA3AF'}}/>
-                      </button>
-                      <span className={cls}>{label}</span>
-                      {crateAlert && <span className="badge-red pulse">{crateAlert.label}</span>}
-                    </div>
-                    <div style={{display:'flex',gap:8,flexWrap:'wrap',fontSize:11,color:'#9CA3AF'}}>
-                      <span>Since {fmtDate(d.oldest)}</span><span>·</span>
-                      <span className="num">{d.eggs.toLocaleString()} eggs</span><span>·</span>
-                      <span>{d.sales.length} sale{d.sales.length!==1?'s':''}</span>
-                    </div>
-                    {d.totalPaid > 0 && (
-                      <div style={{marginTop:10}}>
-                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                          <span style={{fontSize:10,color:'#6B7280'}}>Paid: <span className="num" style={{color:'#059669',fontWeight:700}}>{fmtNaira(d.totalPaid)}</span></span>
-                          <span className="num" style={{fontSize:10,color:'#059669',fontWeight:700}}>{pct}%</span>
-                        </div>
-                        <div className="progress-track"><div className="progress-fill-green progress-fill" style={{width:`${pct}%`}}/></div>
-                      </div>
-                    )}
-                    {d.cratesOut > 0 && (
-                      <div style={{marginTop:10,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-                        <Package size={12} style={{color:'#D97706'}}/>
-                        <span style={{fontSize:11,color:'#D97706',fontWeight:600}}>{d.cratesOut} crate{d.cratesOut!==1?'s':''} with buyer</span>
-                        <button onClick={()=>setS(key,{crateOpen:!s.crateOpen,payOpen:false})} style={{fontSize:11,color:'#4F6EF7',fontWeight:700,background:'none',border:'none',cursor:'pointer',textDecoration:'underline',textUnderlineOffset:3,padding:0}}>Log Return</button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:8,flexShrink:0}}>
-                    <div style={{textAlign:'right'}}>
-                      <p style={{fontSize:9,color:'#9CA3AF',textTransform:'uppercase',letterSpacing:'0.1em',fontWeight:700}}>Owes</p>
-                      <p className="num" style={{fontSize:18,fontWeight:700,color:'#DC2626'}}>{fmtNaira(d.owed)}</p>
-                    </div>
-                    <button onClick={()=>setS(key,{payOpen:!s.payOpen,crateOpen:false})} style={{fontSize:11,fontWeight:700,padding:'7px 12px',borderRadius:10,border:'1.5px solid #C7D2FE',background:s.payOpen?'#EEF1FF':'#F5F7FF',color:'#4F6EF7',cursor:'pointer',display:'flex',alignItems:'center',gap:5,whiteSpace:'nowrap'}}>
-                      <CreditCard size={11}/> Part Pay {s.payOpen?<ChevronUp size={10}/>:<ChevronDown size={10}/>}
-                    </button>
-                    <button onClick={async()=>{if(!window.confirm(`Mark ALL credit sales for ${d.name} as paid?`))return;for(const sale of d.sales)await onMarkPaid(sale.id);showToast(`${d.name} fully paid`)}} style={{fontSize:11,fontWeight:700,padding:'7px 12px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#4F6EF7,#3B55E0)',color:'#fff',cursor:'pointer',display:'flex',alignItems:'center',gap:5,whiteSpace:'nowrap',boxShadow:'0 2px 8px rgba(79,110,247,0.3)'}}>
-                      <PackageCheck size={11}/> Fully Paid
-                    </button>
-                  </div>
+        return (
+          <div key={debtor.name} style={{
+            background: 'white', borderRadius: '14px', marginBottom: '10px',
+            boxShadow: '0 1px 8px rgba(0,0,0,0.07)', overflow: 'hidden'
+          }}>
+            {/* Card header */}
+            <div style={{ padding: '14px 14px 10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div>
+                  <button
+                    onClick={() => setExpandedCustomer(isExpanded ? null : debtor.name)}
+                    style={{
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                      fontWeight: 700, fontSize: '15px', color: '#111827',
+                      textDecoration: 'underline', textDecorationStyle: 'dotted',
+                      textDecorationColor: '#9CA3AF', textUnderlineOffset: '3px'
+                    }}>
+                    {debtor.name}
+                  </button>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#9CA3AF' }}>
+                    {debtor.sales.length} sale{debtor.sales.length !== 1 ? 's' : ''} · since {new Date(debtor.oldest).toLocaleDateString('en-NG', { day:'numeric', month:'short' })}
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#EF4444' }}>{fmt(balance)}</p>
+                  {totalPaid > 0 && (
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#10B981' }}>{fmt(totalPaid)} paid</p>
+                  )}
                 </div>
               </div>
 
-              {/* Part pay */}
-              {s.payOpen && (
-                <div className="slide-up" style={{borderTop:'1px solid #EEF1FF',background:'#F5F7FF',padding:'14px 18px'}}>
-                  <p style={{fontSize:11,fontWeight:700,color:'#4F6EF7',marginBottom:10}}>Record Partial Payment</p>
-                  <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                    <div>
-                      <label className="label">Amount received (₦)</label>
-                      <input type="number" inputMode="decimal" placeholder={`Max ${fmtNaira(d.owed)}`} value={s.payAmt} onChange={e=>setS(key,{payAmt:e.target.value})} className="field" style={{fontSize:16}} autoFocus/>
-                    </div>
-                    <div>
-                      <label className="label">Payment method</label>
-                      <div style={{display:'flex',gap:6}}>
-                        {[{val:'Cash',emoji:'💵'},{val:'Transfer',emoji:'📲'},{val:'Other',emoji:'•••'}].map(({val,emoji})=>{
-                          const active=(s.payMethod||'Cash')===val
-                          return <button key={val} type="button" onClick={()=>setS(key,{payMethod:val})} style={{flex:1,padding:'9px 0',borderRadius:10,border:active?'none':'1.5px solid #E5E7EB',background:active?'linear-gradient(135deg,#4F6EF7,#3B55E0)':'#fff',color:active?'#fff':'#6B7280',fontSize:12,fontWeight:700,cursor:'pointer',transition:'all 0.15s',display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
-                            <span style={{fontSize:val==='Other'?11:14}}>{emoji}</span>{val}
-                          </button>
-                        })}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="label">Note (optional)</label>
-                      <input type="text" placeholder={(s.payMethod||'Cash')==='Transfer'?'e.g. GTBank ref 123':'e.g. Paid at farm'} value={s.payNotes} onChange={e=>setS(key,{payNotes:e.target.value})} className="field" style={{fontSize:16}}/>
-                    </div>
-                    <div style={{display:'flex',gap:8}}>
-                      <button onClick={()=>submitPayment(d)} disabled={s.saving} className="btn-primary" style={{flex:1,padding:'11px 0'}}>
-                        {s.saving?<Loader2 size={13} className="animate-spin"/>:<CreditCard size={13}/>} Save Payment
-                      </button>
-                      <button onClick={()=>setS(key,{payOpen:false,payAmt:'',payNotes:''})} style={{background:'#F3F4F6',border:'1.5px solid #E5E7EB',borderRadius:12,padding:'11px 14px',fontSize:12,color:'#6B7280',cursor:'pointer'}}>Cancel</button>
-                    </div>
+              {/* Progress bar */}
+              {pct > 0 && (
+                <div style={{ height: '4px', borderRadius: '2px', background: '#F3F4F6', marginBottom: '10px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: '#10B981', borderRadius: '2px', transition: 'width 0.4s ease' }} />
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button onClick={() => setPartialCustomer(isPartialOpen ? null : debtor.name)}
+                  style={actionBtn('#4F6EF7')}>
+                  💰 Part Pay
+                </button>
+                <a href={buildWhatsApp(debtor)} target="_blank" rel="noreferrer"
+                  style={{ ...actionBtn('#25D366'), textDecoration: 'none', display: 'inline-block' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    Remind
+                  </span>
+                </a>
+              </div>
+            </div>
+
+            {/* Partial payment form */}
+            {isPartialOpen && (
+              <div style={{ padding: '12px 14px', borderTop: '1px solid #F3F4F6', background: '#F9FAFB' }}>
+                <p style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 700, color: '#374151' }}>
+                  Record partial payment
+                </p>
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+                  {['Cash','Transfer','Other'].map(m => (
+                    <button key={m} onClick={() => setPartialForm(f => ({ ...f, method: m }))}
+                      style={{
+                        flex: 1, padding: '7px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+                        border: `1.5px solid ${partialForm.method === m ? '#4F6EF7' : '#E5E7EB'}`,
+                        background: partialForm.method === m ? '#EEF1FF' : 'white',
+                        color: partialForm.method === m ? '#4F6EF7' : '#6B7280',
+                        cursor: 'pointer'
+                      }}>
+                      {m === 'Cash' ? '💵' : m === 'Transfer' ? '📲' : '•••'} {m}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                  <div>
+                    <label style={lblStyle}>Amount (₦)</label>
+                    <input type="number" placeholder="0" value={partialForm.amount}
+                      onChange={e => setPartialForm(f => ({ ...f, amount: e.target.value }))}
+                      style={inpStyle} />
+                  </div>
+                  <div>
+                    <label style={lblStyle}>Note (optional)</label>
+                    <input type="text" placeholder="e.g. GTBank" value={partialForm.notes}
+                      onChange={e => setPartialForm(f => ({ ...f, notes: e.target.value }))}
+                      style={inpStyle} />
                   </div>
                 </div>
-              )}
-
-              {/* Crate return */}
-              {d.cratesOut > 0 && s.crateOpen && (
-                <div className="slide-up" style={{borderTop:'1px solid #FEF3C7',background:'#FFFBF0',padding:'14px 18px',display:'flex',alignItems:'center',gap:8}}>
-                  <Package size={14} style={{color:'#D97706',flexShrink:0}}/>
-                  <input type="number" inputMode="numeric" min="1" max={d.cratesOut} placeholder={`Max ${d.cratesOut}`} value={s.crateQty} onChange={e=>setS(key,{crateQty:e.target.value})} style={{flex:1,background:'#fff',border:'1.5px solid #FDE68A',borderRadius:10,padding:'9px 12px',fontSize:16,color:'#111827',outline:'none'}}/>
-                  <button onClick={()=>submitReturn(d)} disabled={s.saving} style={{background:'linear-gradient(135deg,#D97706,#B45309)',color:'#fff',border:'none',borderRadius:10,padding:'9px 14px',fontSize:12,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:5,whiteSpace:'nowrap',opacity:s.saving?.6:1}}>
-                    {s.saving?<Loader2 size={12} className="animate-spin"/>:<PackageCheck size={12}/>} Log Return
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => handlePartialSubmit(debtor)} disabled={saving}
+                    style={{ flex: 1, padding: '9px', borderRadius: '8px', background: '#4F6EF7', color: 'white',
+                      border: 'none', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>
+                    {saving ? 'Saving...' : 'Record Payment'}
                   </button>
-                  <button onClick={()=>setS(key,{crateOpen:false})} style={{background:'none',border:'none',cursor:'pointer',color:'#9CA3AF',padding:4,fontSize:14}}>✕</button>
+                  <button onClick={() => setPartialCustomer(null)}
+                    style={{ padding: '9px 14px', borderRadius: '8px', background: 'white',
+                      border: '1px solid #E5E7EB', color: '#6B7280', fontWeight: 600,
+                      fontSize: '13px', cursor: 'pointer' }}>
+                    Cancel
+                  </button>
                 </div>
-              )}
-            </div>
-          )
-        })}
+              </div>
+            )}
 
-        <CustomerDirectory customers={allCust} onOpen={openSheet}/>
-      </div>
-      {sheetCustomer && <CustomerSheet customer={sheetCustomer} onClose={()=>setSheetCustomer(null)}/>}
-    </>
+            {/* Expanded sale list */}
+            {isExpanded && (
+              <div style={{ borderTop: '1px solid #F3F4F6' }}>
+                {/* Payment history - admin can delete entries */}
+                {customerPayments.length > 0 && (
+                  <div style={{ padding: '10px 14px', background: '#F9FAFB', borderBottom: '1px solid #F3F4F6' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Payment history
+                    </p>
+                    {customerPayments.map(p => (
+                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div>
+                          <span style={{ fontSize: '12px', color: '#374151', fontWeight: 600 }}>{fmt(p.amount)}</span>
+                          <span style={{ fontSize: '11px', color: '#9CA3AF', marginLeft: '6px' }}>
+                            {new Date(p.date).toLocaleDateString('en-NG', { day:'numeric', month:'short' })}
+                            {p.notes ? ` · ${p.notes}` : ''}
+                          </span>
+                        </div>
+                        {/* Only admin sees delete on payment history */}
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeletePayment(p.id)}
+                            disabled={deletingPayment === p.id}
+                            title="Delete payment record"
+                            style={{
+                              background: '#FEE2E2', border: 'none', cursor: 'pointer',
+                              color: '#EF4444', fontSize: '12px', padding: '3px 7px',
+                              borderRadius: '5px', fontWeight: 700
+                            }}>
+                            {deletingPayment === p.id ? '…' : '×'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Individual sale lines */}
+                {debtor.sales.map(sale => {
+                  const salePaid   = paidForSale(sale.id)
+                  const saleBalance = parseFloat(sale.amount) - salePaid
+                  const aging      = agingLabel(sale)
+                  return (
+                    <div key={sale.id} style={{
+                      padding: '10px 14px', borderBottom: '1px solid #F9FAFB',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '10px', fontWeight: 700, padding: '2px 7px',
+                            borderRadius: '20px', background: aging.bg, color: aging.color
+                          }}>{aging.label}</span>
+                          <span style={{ fontSize: '12px', color: '#6B7280' }}>
+                            {new Date(sale.date).toLocaleDateString('en-NG', { day:'numeric', month:'short' })}
+                          </span>
+                        </div>
+                        <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#9CA3AF' }}>
+                          {sale.crates} crate{parseInt(sale.crates) !== 1 ? 's' : ''}
+                          {salePaid > 0 && (
+                            <span style={{ color: '#10B981', marginLeft: '6px' }}>· {fmt(salePaid)} paid</span>
+                          )}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 700, color: saleBalance > 0 ? '#EF4444' : '#10B981' }}>
+                          {fmt(saleBalance > 0 ? saleBalance : parseFloat(sale.amount))}
+                          {saleBalance <= 0 && <span style={{ fontSize: '11px', marginLeft: '4px' }}>✓</span>}
+                        </span>
+                        {/* Mark paid - all users can do this */}
+                        {saleBalance > 0 && (
+                          <button onClick={() => handleMarkPaid(sale.id)} disabled={markingPaid === sale.id}
+                            style={{
+                              padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                              background: '#D1FAE5', color: '#065F46', border: 'none', cursor: 'pointer'
+                            }}>
+                            {markingPaid === sale.id ? '...' : 'Paid ✓'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* Non-admin notice inside expanded view */}
+                {!isAdmin && (
+                  <div style={{ padding: '8px 14px', background: '#F9FAFB' }}>
+                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                      🔒 Only the admin can delete payment records.
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
-function CustomerDirectory({ customers, onOpen }) {
-  const list = Object.values(customers).sort((a,b) => a.name.localeCompare(b.name))
-  if (!list.length) return null
-  return (
-    <div style={{background:'#FFFFFF',borderRadius:16,boxShadow:'0 2px 12px rgba(0,0,0,0.07)',border:'1.5px solid #F3F4F6',overflow:'hidden',marginTop:4}}>
-      <div style={{padding:'12px 18px',borderBottom:'1px solid #F3F4F6',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <p className="label" style={{marginBottom:0}}>All Customers ({list.length})</p>
-      </div>
-      {list.map((c,idx) => (
-        <button key={c.name} onClick={()=>onOpen(c.name)} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 18px',background:'none',border:'none',cursor:'pointer',borderBottom:idx<list.length-1?'1px solid #F3F4F6':'none',textAlign:'left'}}>
-          <div>
-            <p style={{fontSize:13,fontWeight:600,color:'#111827'}}>{c.name}</p>
-            <p style={{fontSize:11,color:'#9CA3AF',marginTop:1}}>{c.sales.length} sale{c.sales.length!==1?'s':''}</p>
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            {c.owed > 0 && <span className="num" style={{fontSize:12,fontWeight:700,color:'#DC2626'}}>{fmtNaira(c.owed)}</span>}
-            <ExternalLink size={13} style={{color:'#9CA3AF'}}/>
-          </div>
-        </button>
-      ))}
-    </div>
-  )
+const actionBtn = (color) => ({
+  padding: '7px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600,
+  background: `${color}12`, color, border: `1px solid ${color}30`,
+  cursor: 'pointer'
+})
+const lblStyle = {
+  display: 'block', fontSize: '10px', fontWeight: 600,
+  color: '#6B7280', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em'
+}
+const inpStyle = {
+  width: '100%', padding: '8px 10px', borderRadius: '7px',
+  border: '1.5px solid #E5E7EB', fontSize: '13px', color: '#111827',
+  outline: 'none', boxSizing: 'border-box', background: 'white'
 }

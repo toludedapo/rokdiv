@@ -1,235 +1,260 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { LayoutDashboard, PlusCircle, Clock, History, LogOut, Download, Loader2, WifiOff, RefreshCw, Users } from 'lucide-react'
-import { useAuth } from './hooks/useAuth.jsx'
-import { useSales, useCollections, useCrateInventory } from './hooks/useCloudData.js'
-import { usePayments } from './hooks/usePayments.js'
-import { useOfflineSync } from './hooks/useOfflineSync.js'
-import { useWeeklySummary } from './hooks/useWeeklySummary.js'
-import { todayLabel } from './utils/dateUtils.js'
-import { exportSalesCSV, exportCollectionsCSV } from './utils/exportUtils.js'
-import AuthScreen from './components/AuthScreen.jsx'
-import SummaryCards from './components/SummaryCards.jsx'
-import CollectionForm from './components/CollectionForm.jsx'
-import SalesForm from './components/SalesForm.jsx'
-import CreditTracker, { computeDebtors } from './components/CreditTracker.jsx'
-import CrateInventoryCard from './components/CrateInventoryCard.jsx'
-import HistoryLog from './components/HistoryLog.jsx'
-import UserManager from './components/UserManager.jsx'
-import Toast from './components/Toast.jsx'
+import { useState, useEffect } from 'react'
+import { useAuth }        from './hooks/useAuth'
+import { useCloudData }   from './hooks/useCloudData'
+import { usePayments }    from './hooks/usePayments'
+import { useExpenses }    from './hooks/useExpenses'
+import { useOfflineSync } from './hooks/useOfflineSync'
+import { useWeeklySummary } from './hooks/useWeeklySummary'
+
+import AuthScreen      from './components/AuthScreen'
+import SummaryCards    from './components/SummaryCards'
+import CollectionForm  from './components/CollectionForm'
+import SalesForm       from './components/SalesForm'
+import CreditTracker   from './components/CreditTracker'
+import HistoryLog      from './components/HistoryLog'
+import ExpenseTracker  from './components/ExpenseTracker'
+import UserManager     from './components/UserManager'
+import Toast           from './components/Toast'
 
 const ADMIN_EMAIL = 'dadimula1@gmail.com'
 
-const BASE_TABS = [
-  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
-  { id: 'log',       label: 'Log Entry',  Icon: PlusCircle       },
-  { id: 'credit',    label: 'Credit',     Icon: Clock            },
-  { id: 'history',   label: 'History',    Icon: History          },
+const NAV_TABS = [
+  { id: 'dashboard', icon: '⌂',  label: 'Home'     },
+  { id: 'collect',   icon: '🥚', label: 'Collect'  },
+  { id: 'sales',     icon: '🛒', label: 'Sales'    },
+  { id: 'credit',    icon: '📋', label: 'Credit'   },
+  { id: 'expenses',  icon: '💸', label: 'Expenses' },
+  { id: 'history',   icon: '📜', label: 'History'  },
 ]
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
+  const {
+    collections, sales, inventory,
+    addCollection, addSale, updateSale,
+    loading: dataLoading
+  } = useCloudData(user?.id)
 
-  if (authLoading) return (
-    <div style={{ minHeight:'100vh', background:'#F0F2F5', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <Loader2 size={28} className="animate-spin" style={{ color:'#4F6EF7' }} />
-    </div>
-  )
-  if (!user) return <AuthScreen />
-  return <Dashboard user={user} onSignOut={signOut} />
-}
+  const { payments, addPayment, deletePayment } = usePayments(user?.id)
+  const { expenses, addExpense, deleteExpense }  = useExpenses(user?.id)
+  useOfflineSync({ user, addCollection, addSale })
+  useWeeklySummary({ sales, collections })
 
-function Dashboard({ user, onSignOut }) {
-  const isAdmin = user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+  const [activeTab, setActiveTab]   = useState('dashboard')
+  const [toast, setToast]           = useState(null)
+  const [isOnline, setIsOnline]     = useState(navigator.onLine)
+  const [offlineCount, setOfflineCount] = useState(0)
 
-  // Admin gets an extra Users tab
-  const TABS = isAdmin
-    ? [...BASE_TABS, { id: 'users', label: 'Users', Icon: Users }]
-    : BASE_TABS
+  // True only for the admin account
+  const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 
-  const [tab,      setTab]      = useState('dashboard')
-  const [toast,    setToast]    = useState('')
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
-
-  const showToast = useCallback(msg => setToast(msg), [])
-
-  const { sales,       loading: salesLoading, addSale,       updateSale,       deleteSale,       markPaid      } = useSales(user.id)
-  const { collections, loading: collLoading,  addCollection, deleteCollection                                  } = useCollections(user.id)
-  const { inventory,   loading: invLoading,   setTotalOwned                                                    } = useCrateInventory(user.id)
-  const { payments,                           addPayment                                                       } = usePayments(user.id)
-
-  const { offlineSales, offlineCollections, isSyncing, queueSale, queueCollection } = useOfflineSync({ addSale, addCollection, showToast })
-
-  const cloudSaleIds = useMemo(() => new Set(sales.map(s => s.id)), [sales])
-  const cloudCollIds = useMemo(() => new Set(collections.map(c => c.id)), [collections])
-
-  const allSales       = useMemo(() => [...sales, ...offlineSales.filter(s => !cloudSaleIds.has(s.id))], [sales, offlineSales, cloudSaleIds])
-  const allCollections = useMemo(() => [...collections, ...offlineCollections.filter(c => !cloudCollIds.has(c.id))], [collections, offlineCollections, cloudCollIds])
+  const allTabs = isAdmin
+    ? [...NAV_TABS, { id: 'users', icon: '👥', label: 'Users' }]
+    : NAV_TABS
 
   useEffect(() => {
-    const up   = () => setIsOnline(true)
-    const down = () => setIsOnline(false)
-    window.addEventListener('online',  up)
-    window.addEventListener('offline', down)
-    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
+    const go   = () => setIsOnline(true)
+    const gone = () => setIsOnline(false)
+    window.addEventListener('online',  go)
+    window.addEventListener('offline', gone)
+    return () => {
+      window.removeEventListener('online',  go)
+      window.removeEventListener('offline', gone)
+    }
   }, [])
 
-  useWeeklySummary(allSales, allCollections)
+  useEffect(() => {
+    const q1 = JSON.parse(localStorage.getItem('offline_collections') || '[]')
+    const q2 = JSON.parse(localStorage.getItem('offline_sales') || '[]')
+    setOfflineCount(q1.length + q2.length)
+  }, [collections, sales])
 
-  const cratesOut     = useMemo(() => allSales.reduce((sum,s) => sum+((s.crates_loaned||0)-(s.crates_returned||0)),0), [allSales])
-  const cratesInFarm  = Math.max(0, (inventory?.total_owned ?? 0) - cratesOut)
-  const paymentsTotal = useMemo(() => payments.reduce((s,p) => s+Number(p.amount),0), [payments])
-
-  const handleReturnCrates = useCallback(async (saleId, newReturned) => {
-    await updateSale(saleId, { crates_returned: newReturned })
-  }, [updateSale])
-
-  async function clearAll() {
-    for (const s of sales)       await deleteSale(s.id)
-    for (const c of collections) await deleteCollection(c.id)
-    showToast('All records cleared')
+  function showToast(msg, type = 'success') {
+    setToast({ message: msg, type })
+    setTimeout(() => setToast(null), 3000)
   }
 
-  const debtorCount  = useMemo(() => computeDebtors(allSales, payments).length, [allSales, payments])
-  const offlineCount = offlineSales.length + offlineCollections.length
+  async function handleAddCollection(data) {
+    const result = await addCollection(data)
+    if (result?.error) { showToast('Failed to save collection', 'error'); return }
+    showToast('Collection logged ✓')
+  }
 
-  const [deferredInstall, setDeferredInstall] = useState(null)
-  const [showInstall,     setShowInstall]     = useState(false)
-  useEffect(() => {
-    const h = e => { e.preventDefault(); setDeferredInstall(e); setShowInstall(true) }
-    window.addEventListener('beforeinstallprompt', h)
-    return () => window.removeEventListener('beforeinstallprompt', h)
-  }, [])
+  async function handleAddSale(data) {
+    const result = await addSale(data)
+    if (result?.error) { showToast('Failed to save sale', 'error'); return }
+    showToast(`Sale recorded — ${data.payment_type === 'credit' ? 'Credit' : 'Cash'} ✓`)
+  }
+
+  async function handleMarkPaid(saleId) {
+    const { error } = await updateSale(saleId, { paid: true })
+    if (!error) showToast('Marked as paid ✓')
+    else showToast('Could not update', 'error')
+  }
+
+  async function handleAddPayment(data) {
+    const { error } = await addPayment({ ...data, user_id: user.id })
+    if (!error) showToast('Payment recorded ✓')
+    else showToast('Could not save payment', 'error')
+  }
+
+  async function handleAddExpense(data) {
+    const { error } = await addExpense(data)
+    if (!error) showToast('Expense logged ✓')
+    return { error }
+  }
+
+  async function handleDeleteExpense(id) {
+    if (!isAdmin) return  // belt-and-suspenders: should never be called by non-admin
+    await deleteExpense(id)
+    showToast('Expense removed')
+  }
+
+  async function handleDeletePayment(id) {
+    if (!isAdmin) return
+    await deletePayment(id)
+    showToast('Payment record removed')
+  }
+
+  if (authLoading) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F0F2F5' }}>
+      <div style={{ textAlign:'center' }}>
+        <div style={{ fontSize:'32px', marginBottom:'12px' }}>🥚</div>
+        <p style={{ color:'#9CA3AF', fontSize:'14px' }}>Loading…</p>
+      </div>
+    </div>
+  )
+
+  if (!user) return <AuthScreen />
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', minHeight:'100vh', background:'#F0F2F5', maxWidth:480, margin:'0 auto' }}>
-
-      {/* ── Header ── */}
-      <header style={{
-        background: '#FFFFFF',
-        borderBottom: '1px solid #F3F4F6',
-        padding: `max(14px, env(safe-area-inset-top)) 16px 14px`,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        position: 'sticky', top: 0, zIndex: 40,
-        boxShadow: '0 1px 8px rgba(0,0,0,0.06)',
+    <div style={{ background:'#F0F2F5', minHeight:'100vh', maxWidth:'480px', margin:'0 auto', fontFamily:"'Inter', -apple-system, sans-serif" }}>
+      {/* Header */}
+      <div style={{
+        background:'white', padding:'14px 16px 10px',
+        borderBottom:'1px solid #F3F4F6',
+        position:'sticky', top:0, zIndex:50,
+        boxShadow:'0 1px 6px rgba(0,0,0,0.06)'
       }}>
-        {/* Left: logo + name */}
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#4F6EF7,#3B55E0)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, boxShadow:'0 2px 8px rgba(79,110,247,0.3)', flexShrink:0 }}>
-            🥚
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+            <span style={{ fontSize:'22px' }}>🥚</span>
+            <div>
+              <h1 style={{ margin:0, fontSize:'17px', fontWeight:800, color:'#111827', letterSpacing:'-0.02em' }}>ROKDIV</h1>
+              <p style={{ margin:0, fontSize:'11px', color:'#9CA3AF' }}>Farm Tracker</p>
+            </div>
           </div>
-          <div>
-            <h1 style={{ fontSize:15, fontWeight:700, color:'#111827', letterSpacing:'-0.01em', lineHeight:1 }}>ROKDIV</h1>
-            <p style={{ fontSize:10, color:'#9CA3AF', lineHeight:1, marginTop:2, maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.email}</p>
-          </div>
-        </div>
+          <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+            {/* Role badge */}
+            <span style={{
+              background: isAdmin ? '#EEF1FF' : '#F0FDF4',
+              color: isAdmin ? '#4F6EF7' : '#16A34A',
+              fontSize:'10px', fontWeight:700, padding:'3px 8px',
+              borderRadius:'20px', letterSpacing:'0.04em',
+              border: `1px solid ${isAdmin ? '#C7D2FE' : '#BBF7D0'}`
+            }}>
+              {isAdmin ? 'ADMIN' : 'STAFF'}
+            </span>
 
-        {/* Right: status pills + logout */}
-        <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
-          {!isOnline && (
-            <div style={{ display:'flex', alignItems:'center', gap:4, background:'#EEF1FF', border:'1px solid #C7D2FE', borderRadius:99, padding:'4px 8px' }}>
-              <WifiOff size={11} style={{ color:'#4F6EF7' }} />
-              <span style={{ fontSize:10, fontWeight:700, color:'#4F6EF7' }}>Offline</span>
-            </div>
-          )}
-          {isSyncing && (
-            <div style={{ display:'flex', alignItems:'center', gap:4, background:'#ECFDF5', border:'1px solid #A7F3D0', borderRadius:99, padding:'4px 8px' }}>
-              <RefreshCw size={10} style={{ color:'#059669' }} className="sync-spin" />
-              <span style={{ fontSize:10, fontWeight:700, color:'#059669' }}>Syncing</span>
-            </div>
-          )}
-          {offlineCount > 0 && !isSyncing && (
-            <div style={{ display:'flex', alignItems:'center', gap:3, background:'#EEF1FF', border:'1px solid #C7D2FE', borderRadius:99, padding:'4px 8px' }}>
-              <span style={{ fontSize:10, fontWeight:700, color:'#4F6EF7' }}>💾 {offlineCount}</span>
-            </div>
-          )}
-          {showInstall && (
-            <button onClick={() => { deferredInstall?.prompt(); setShowInstall(false) }} style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:99, background:'#EEF1FF', border:'1px solid #C7D2FE', color:'#4F6EF7', cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
-              <Download size={10} /> Install
+            {!isOnline && (
+              <span style={{
+                background:'#FEF3C7', color:'#92400E', fontSize:'11px',
+                fontWeight:600, padding:'3px 8px', borderRadius:'20px',
+                border:'1px solid #FDE68A'
+              }}>
+                Offline{offlineCount > 0 ? ` · ${offlineCount} queued` : ''}
+              </span>
+            )}
+
+            <button onClick={signOut} style={{
+              background:'#FEE2E2', border:'none', borderRadius:'8px',
+              padding:'7px 12px', cursor:'pointer', fontSize:'12px',
+              fontWeight:600, color:'#DC2626', display:'flex', alignItems:'center', gap:'4px'
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Logout
             </button>
-          )}
-          {/* Logout — always visible */}
-          <button
-            onClick={onSignOut}
-            title="Sign out"
-            style={{ width:34, height:34, borderRadius:10, background:'#DC2626', border:'none', display:'flex', alignItems:'center', justifyContent:'center', color:'#ffffff', cursor:'pointer', flexShrink:0, boxShadow:'0 2px 8px rgba(220,38,38,0.35)' }}
-          >
-            <LogOut size={15} />
-          </button>
+          </div>
         </div>
-      </header>
+      </div>
 
-      {/* ── Content ── */}
-      <main style={{ flex:1, overflowY:'auto', paddingBottom:96 }}>
-
-        {tab === 'dashboard' && (
-          <div style={{ paddingTop:10, display:'flex', flexDirection:'column', gap:12 }}>
-            <SummaryCards sales={allSales} collections={allCollections} paymentsTotal={paymentsTotal} />
-            <CrateInventoryCard inventory={inventory} cratesOut={cratesOut} loading={invLoading} onSetTotalOwned={setTotalOwned} />
-            <div style={{ margin:'0 16px', background:'#FFFFFF', borderRadius:16, boxShadow:'0 2px 12px rgba(0,0,0,0.07)', border:'1.5px solid #F3F4F6', padding:'16px 18px' }}>
-              <p className="label" style={{ marginBottom:10 }}>Quick Export</p>
-              <div style={{ display:'flex', gap:8 }}>
-                {[
-                  { label:'Sales',       fn:()=>{ exportSalesCSV(allSales);            showToast('Sales CSV downloaded')       } },
-                  { label:'Collections', fn:()=>{ exportCollectionsCSV(allCollections); showToast('Collections CSV downloaded') } },
-                ].map(({label,fn}) => (
-                  <button key={label} onClick={fn} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6, background:'#F8F9FB', border:'1.5px solid #E5E7EB', borderRadius:12, padding:'10px 0', fontSize:12, fontWeight:600, color:'#6B7280', cursor:'pointer' }}>
-                    <Download size={12}/> {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+      {/* Content */}
+      <div style={{ padding:'16px 14px', paddingBottom:'90px' }}>
+        {activeTab === 'dashboard' && (
+          <SummaryCards collections={collections} sales={sales} expenses={expenses} />
         )}
-
-        {tab === 'log' && (
-          <div style={{ paddingTop:12, display:'flex', flexDirection:'column', gap:12 }}>
-            <CollectionForm collections={allCollections} onSave={addCollection} onDelete={deleteCollection} onQueueOffline={queueCollection} showToast={showToast} />
-            <SalesForm sales={allSales} cratesInFarm={cratesInFarm} onSave={addSale} onDelete={deleteSale} onMarkPaid={markPaid} onQueueOffline={queueSale} showToast={showToast} />
-          </div>
+        {activeTab === 'collect' && (
+          <CollectionForm onAdd={handleAddCollection} inventory={inventory} />
         )}
-
-        {tab === 'credit' && (
-          <div style={{ paddingTop:12 }}>
-            <CreditTracker sales={allSales} payments={payments} onMarkPaid={markPaid} onReturnCrates={handleReturnCrates} onAddPayment={addPayment} showToast={showToast} />
-          </div>
+        {activeTab === 'sales' && (
+          <SalesForm onAdd={handleAddSale} inventory={inventory} />
         )}
-
-        {tab === 'history' && (
-          <div style={{ paddingTop:12 }}>
-            <HistoryLog sales={allSales} collections={allCollections} onClearAll={clearAll} showToast={showToast} />
-          </div>
+        {activeTab === 'credit' && (
+          <CreditTracker
+            sales={sales}
+            onMarkPaid={handleMarkPaid}
+            payments={payments}
+            onAddPayment={handleAddPayment}
+            onDeletePayment={handleDeletePayment}
+            isAdmin={isAdmin}
+          />
         )}
-
-        {tab === 'users' && isAdmin && (
-          <div style={{ paddingTop:12 }}>
-            <UserManager adminEmail={ADMIN_EMAIL} />
-          </div>
+        {activeTab === 'expenses' && (
+          <ExpenseTracker
+            expenses={expenses}
+            onAdd={handleAddExpense}
+            onDelete={handleDeleteExpense}
+            monthlySales={sales}
+            isAdmin={isAdmin}
+          />
         )}
-      </main>
+        {activeTab === 'history' && (
+          <HistoryLog collections={collections} sales={sales} />
+        )}
+        {activeTab === 'users' && isAdmin && (
+          <UserManager adminEmail={ADMIN_EMAIL} />
+        )}
+      </div>
 
-      {/* ── Bottom nav ── */}
-      <nav style={{ position:'fixed', bottom:0, left:0, right:0, maxWidth:480, margin:'0 auto', background:'#FFFFFF', borderTop:'1px solid #F3F4F6', display:'flex', zIndex:40, paddingBottom:'env(safe-area-inset-bottom, 0px)', boxShadow:'0 -1px 8px rgba(0,0,0,0.06)' }}>
-        {TABS.map(({ id, label, Icon }) => {
-          const active   = tab === id
-          const hasAlert = id === 'credit' && debtorCount > 0
+      {/* Bottom navigation */}
+      <nav style={{
+        position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)',
+        width:'100%', maxWidth:'480px', background:'white',
+        borderTop:'1px solid #F3F4F6', display:'flex',
+        boxShadow:'0 -2px 12px rgba(0,0,0,0.08)', zIndex:50
+      }}>
+        {allTabs.map(tab => {
+          const active = activeTab === tab.id
           return (
-            <button key={id} onClick={() => setTab(id)} aria-label={label} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', padding:'10px 0 8px', gap:3, background:'none', border:'none', cursor:'pointer', position:'relative', color:active?'#4F6EF7':'#9CA3AF', transition:'color 0.15s' }}>
-              <div style={{ position:'relative' }}>
-                <Icon size={20} strokeWidth={active ? 2.2 : 1.6} />
-                {hasAlert && (
-                  <span className="notif-pop" style={{ position:'absolute', top:-4, right:-6, background:'#DC2626', color:'#fff', fontSize:8, fontFamily:'JetBrains Mono, monospace', fontWeight:700, width:15, height:15, borderRadius:99, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    {debtorCount}
-                  </span>
-                )}
-              </div>
-              <span style={{ fontSize:10, fontWeight:700 }}>{label}</span>
-              {active && <div style={{ position:'absolute', bottom:0, left:'20%', right:'20%', height:2, background:'linear-gradient(90deg,#4F6EF7,#6C8EFF)', borderRadius:99 }} />}
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              style={{
+                flex:1, padding:'10px 4px 8px', background:'none', border:'none',
+                cursor:'pointer', display:'flex', flexDirection:'column',
+                alignItems:'center', gap:'3px', transition:'all 0.15s ease',
+                position: 'relative'
+              }}>
+              <span style={{ fontSize: allTabs.length > 6 ? '16px' : '18px', lineHeight:1 }}>{tab.icon}</span>
+              <span style={{
+                fontSize:'9px', fontWeight: active ? 700 : 500,
+                color: active ? '#4F6EF7' : '#9CA3AF',
+                letterSpacing:'0.02em'
+              }}>{tab.label}</span>
+              {active && (
+                <div style={{
+                  position:'absolute', bottom:0, width:'20px', height:'2.5px',
+                  background:'#4F6EF7', borderRadius:'2px 2px 0 0'
+                }} />
+              )}
             </button>
           )
         })}
       </nav>
 
-      <Toast message={toast} onDone={() => setToast('')} />
+      {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   )
 }

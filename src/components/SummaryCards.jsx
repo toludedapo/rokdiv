@@ -1,196 +1,221 @@
-import React, { useMemo } from 'react'
-import { TrendingUp, AlertCircle, Archive, Egg, Flame, ArrowUpRight } from 'lucide-react'
-import { fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
+import { useMemo } from 'react'
 
-const LOW_STOCK_EGGS = 1500
+const fmt = (n) => `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`
 
-function computeStreak(collections) {
-  if (!collections.length) return 0
-  const dates = [...new Set(collections.map(c => c.date))].sort((a, b) => b.localeCompare(a))
-  if (!dates.length) return 0
-  const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
-  const yest = new Date(today); yest.setDate(yest.getDate() - 1)
-  const yestStr = yest.toISOString().slice(0, 10)
-  if (dates[0] !== todayStr && dates[0] !== yestStr) return 0
-  let streak = 1
-  for (let i = 1; i < dates.length; i++) {
-    const prev = new Date(dates[i - 1])
-    const curr = new Date(dates[i])
-    if (Math.round((prev - curr) / 86400000) === 1) streak++
-    else break
-  }
-  return streak
-}
-
-function computeRunRate(sales) {
+export default function SummaryCards({ collections, sales, expenses = [] }) {
   const now = new Date()
-  const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() - 7)
-  const cutoffStr = cutoff.toISOString().slice(0, 10)
-  const recent = sales.filter(s => s.date >= cutoffStr)
-  if (!recent.length) return null
-  const totalEggs = recent.reduce((sum, s) => sum + s.crates * CRATE_SIZE + s.singles, 0)
-  const firstDate = recent.reduce((min, s) => s.date < min ? s.date : min, recent[0].date)
-  const daySpan   = Math.max(1, Math.round((now - new Date(firstDate)) / 86400000) + 1)
-  return totalEggs / Math.min(daySpan, 7)
-}
 
-export default function SummaryCards({ sales, collections, paymentsTotal = 0 }) {
-  const totalCollected = collections.reduce((s, c) => s + c.crates * CRATE_SIZE + c.singles, 0)
-  const totalSold      = sales.reduce((s, sale) => s + sale.crates * CRATE_SIZE + sale.singles, 0)
-  const inStock        = Math.max(0, totalCollected - totalSold)
-  const revenue        = sales.filter(s => s.payment_status === 'Paid').reduce((s, sale) => s + Number(sale.amount), 0)
-  const rawDebt        = sales.filter(s => s.payment_status === 'Credit').reduce((s, sale) => s + Number(sale.amount), 0)
-  const debt           = Math.max(0, rawDebt - paymentsTotal)
-  const debtors        = new Set(sales.filter(s => s.payment_status === 'Credit').map(s => s.customer_name?.trim().toLowerCase())).size
+  // ── Run-rate: last 7 days of sales (by egg count, all sale types) ───────────
+  const runRate = useMemo(() => {
+    const cutoff = new Date(now)
+    cutoff.setDate(cutoff.getDate() - 7)
+    const recent = sales.filter(s => new Date(s.date) >= cutoff)
+    if (recent.length === 0) return null
 
-  const streak  = useMemo(() => computeStreak(collections), [collections])
-  const runRate = useMemo(() => computeRunRate(sales), [sales])
+    // Unique days that had sales
+    const days = new Set(recent.map(s => s.date)).size
+    const totalEggs = recent.reduce((sum, s) => sum + (parseInt(s.crates || 0) * 30), 0)
+    return days >= 1 ? totalEggs / 7 : null   // daily average over full 7-day window
+  }, [sales])
 
-  const forecastLabel = useMemo(() => {
-    if (runRate === null || runRate <= 0) return 'No recent sales data'
-    const days = inStock / runRate
-    if (days < 1)  return 'Out of stock today!'
-    if (days < 2)  return 'Out of stock tomorrow'
-    return `~${Math.round(days)} days of stock left`
-  }, [runRate, inStock])
+  // ── Inventory ───────────────────────────────────────────────────────────────
+  const totalCollected = useMemo(
+    () => collections.reduce((s, c) => s + (parseInt(c.crates || 0) * 30 + parseInt(c.loose_eggs || 0)), 0),
+    [collections]
+  )
+  const totalSold = useMemo(
+    () => sales.reduce((s, sale) => s + (parseInt(sale.crates || 0) * 30), 0),
+    [sales]
+  )
+  const inStockEggs = Math.max(0, totalCollected - totalSold)
+  const inStockCrates = Math.floor(inStockEggs / 30)
+  const LOW_STOCK_THRESHOLD = 1500  // 50 crates
+  const isLowStock = inStockEggs > 0 && inStockEggs < LOW_STOCK_THRESHOLD
 
-  const isLowStock = inStock < LOW_STOCK_EGGS && inStock > 0
-
-  const cardBase = {
-    background: '#FFFFFF',
-    borderRadius: 16,
-    padding: '16px 18px',
-    boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
-    border: '1.5px solid transparent',
+  let daysLeft = null
+  if (runRate && runRate > 0 && inStockEggs > 0) {
+    daysLeft = Math.round(inStockEggs / runRate)
   }
+
+  // ── Revenue (this month) ────────────────────────────────────────────────────
+  const monthRevenue = useMemo(() => {
+    return sales
+      .filter(s => {
+        const d = new Date(s.date)
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+      })
+      .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0)
+  }, [sales])
+
+  // ── Expenses (this month) ───────────────────────────────────────────────────
+  const monthExpenses = useMemo(() => {
+    return expenses
+      .filter(e => {
+        const d = new Date(e.date)
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+      })
+      .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0)
+  }, [expenses])
+
+  const netProfit = monthRevenue - monthExpenses
+  const hasExpenseData = monthExpenses > 0
+
+  // ── Outstanding credit ──────────────────────────────────────────────────────
+  const outstanding = useMemo(
+    () => sales.filter(s => s.payment_type === 'credit' && !s.paid)
+               .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0),
+    [sales]
+  )
+
+  // ── Collection streak ───────────────────────────────────────────────────────
+  const streak = useMemo(() => {
+    const dates = [...new Set(collections.map(c => c.date))].sort().reverse()
+    if (dates.length === 0) return 0
+    let count = 0
+    let cursor = new Date(now)
+    cursor.setHours(0,0,0,0)
+    for (const d of dates) {
+      const day = new Date(d)
+      day.setHours(0,0,0,0)
+      const diff = Math.round((cursor - day) / 86400000)
+      if (diff === 0 || diff === 1) { count++; cursor = day }
+      else break
+    }
+    return count
+  }, [collections])
 
   return (
-    <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
-
+    <div>
       {/* Streak banner */}
       {streak >= 2 && (
         <div style={{
-          background: 'linear-gradient(135deg, #FFFBEB, #FEF3C7)',
-          border: '1.5px solid #FDE68A',
-          borderRadius: 14,
-          padding: '12px 16px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          boxShadow: '0 2px 8px rgba(217,119,6,0.12)',
+          background: 'linear-gradient(135deg, #FEF3C7, #FDE68A)',
+          borderRadius: '12px', padding: '10px 14px',
+          display: 'flex', alignItems: 'center', gap: '8px',
+          marginBottom: '12px', border: '1px solid #FCD34D'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="streak-glow" style={{ fontSize: 22 }}>🔥</span>
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#92400E' }}>
-                {streak}-day collection streak!
-              </p>
-              <p style={{ fontSize: 11, color: '#B45309', marginTop: 1 }}>
-                Consistent collections build stronger yields
-              </p>
-            </div>
+          <span style={{ fontSize: '20px' }}>🔥</span>
+          <div>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#92400E' }}>
+              {streak}-day collection streak
+            </span>
+            <span style={{ fontSize: '12px', color: '#B45309', marginLeft: '6px' }}>Keep it up!</span>
           </div>
-          <span className="num" style={{ fontSize: 28, fontWeight: 700, color: '#FDE68A' }}>
-            {streak}
-          </span>
         </div>
       )}
 
-      {/* 2×2 grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      {/* Cards grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
 
         {/* In Stock */}
-        <div
-          className={isLowStock ? 'stock-warn' : ''}
-          style={{ ...cardBase, border: isLowStock ? '1.5px solid rgba(217,119,6,0.4)' : '1.5px solid #F3F4F6' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span className="label" style={{ marginBottom: 0 }}>In Stock</span>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: isLowStock ? '#FFFBEB' : '#EEF1FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Archive size={14} style={{ color: isLowStock ? '#D97706' : '#4F6EF7' }} />
-            </div>
-          </div>
-          <p className="num" style={{ fontSize: 22, fontWeight: 700, color: isLowStock ? '#D97706' : '#111827', lineHeight: 1 }}>
-            {inStock.toLocaleString()}
+        <div style={{
+          ...cardBase,
+          ...(isLowStock ? lowStockStyle : {})
+        }}>
+          <p style={cardLabel}>In Stock</p>
+          <p style={{ ...cardValue, color: isLowStock ? '#EF4444' : '#4F6EF7' }}>
+            {inStockCrates.toLocaleString()}
+            <span style={{ fontSize: '12px', fontWeight: 500, color: '#9CA3AF', marginLeft: '3px' }}>crates</span>
           </p>
-          <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
-            {Math.floor(inStock / CRATE_SIZE)} crates + {inStock % CRATE_SIZE} singles
+          <p style={cardSub}>
+            {inStockEggs.toLocaleString()} eggs
           </p>
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <TrendingUp size={10} style={{ color: isLowStock ? '#D97706' : '#9CA3AF', flexShrink: 0 }} />
-            <span style={{ fontSize: 10, color: isLowStock ? '#D97706' : '#9CA3AF', fontWeight: 500 }}>
-              {forecastLabel}
-            </span>
-          </div>
           {isLowStock && (
-            <p style={{ fontSize: 10, color: '#D97706', fontWeight: 700, marginTop: 4 }}>
-              ⚠️ Below 50-crate threshold
+            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#EF4444', fontWeight: 600 }}>
+              ⚠ Low stock
+            </p>
+          )}
+          {daysLeft !== null && !isLowStock && (
+            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6B7280' }}>
+              ~{daysLeft} day{daysLeft !== 1 ? 's' : ''} left at current rate
+            </p>
+          )}
+          {runRate === null && (
+            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9CA3AF' }}>
+              No recent sales run-rate
             </p>
           )}
         </div>
 
-        {/* Collected */}
-        <div style={{ ...cardBase, border: '1.5px solid #F3F4F6' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span className="label" style={{ marginBottom: 0 }}>Collected</span>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Egg size={14} style={{ color: '#059669' }} />
-            </div>
-          </div>
-          <p className="num" style={{ fontSize: 22, fontWeight: 700, color: '#111827', lineHeight: 1 }}>
-            {totalCollected.toLocaleString()}
-          </p>
-          <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
-            {Math.floor(totalCollected / CRATE_SIZE)} crates lifetime
-          </p>
-          {runRate !== null && (
-            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <TrendingUp size={10} style={{ color: '#9CA3AF', flexShrink: 0 }} />
-              <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 500 }}>
-                {Math.round(runRate).toLocaleString()} eggs/day avg
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Revenue */}
-        <div style={{ ...cardBase, border: '1.5px solid #F3F4F6' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span className="label" style={{ marginBottom: 0 }}>Revenue</span>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: '#EEF1FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <TrendingUp size={14} style={{ color: '#4F6EF7' }} />
-            </div>
-          </div>
-          <p className="num" style={{ fontSize: 22, fontWeight: 700, color: '#111827', lineHeight: 1 }}>
-            {fmtNaira(revenue + paymentsTotal)}
-          </p>
-          <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>Cash received</p>
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #F3F4F6' }}>
-            <span style={{ fontSize: 10, color: '#4F6EF7', fontWeight: 600 }}>
-              +{fmtNaira(paymentsTotal)} from part payments
-            </span>
-          </div>
+        {/* Monthly Revenue */}
+        <div style={cardBase}>
+          <p style={cardLabel}>Revenue (this month)</p>
+          <p style={{ ...cardValue, color: '#10B981' }}>{fmt(monthRevenue)}</p>
+          <p style={cardSub}>from {sales.filter(s => {
+            const d = new Date(s.date)
+            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+          }).length} sale{sales.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* Outstanding */}
-        <div style={{
-          ...cardBase,
-          border: debt > 0 ? '1.5px solid #FECACA' : '1.5px solid #F3F4F6',
-          background: debt > 0 ? '#FFFAFA' : '#FFFFFF',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span className="label" style={{ marginBottom: 0 }}>Outstanding</span>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: debt > 0 ? '#FEF2F2' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AlertCircle size={14} style={{ color: debt > 0 ? '#DC2626' : '#9CA3AF' }} />
-            </div>
-          </div>
-          <p className="num" style={{ fontSize: 22, fontWeight: 700, color: debt > 0 ? '#DC2626' : '#111827', lineHeight: 1 }}>
-            {fmtNaira(debt)}
+        <div style={cardBase}>
+          <p style={cardLabel}>Outstanding</p>
+          <p style={{ ...cardValue, color: outstanding > 0 ? '#F59E0B' : '#10B981' }}>
+            {outstanding > 0 ? fmt(outstanding) : 'Clear'}
           </p>
-          <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
-            {debtors} debtor{debtors !== 1 ? 's' : ''} on credit
+          <p style={cardSub}>
+            {outstanding > 0
+              ? `${sales.filter(s => s.payment_type === 'credit' && !s.paid).length} debtor${sales.filter(s => s.payment_type === 'credit' && !s.paid).length !== 1 ? 's' : ''}`
+              : 'No unpaid credit'}
           </p>
         </div>
+
+        {/* Net Profit or Total Collected */}
+        {hasExpenseData ? (
+          <div style={cardBase}>
+            <p style={cardLabel}>{netProfit >= 0 ? 'Net Profit' : 'Net Loss'} (month)</p>
+            <p style={{ ...cardValue, color: netProfit >= 0 ? '#4F6EF7' : '#EF4444' }}>
+              {fmt(Math.abs(netProfit))}
+            </p>
+            <p style={cardSub}>after {fmt(monthExpenses)} expenses</p>
+          </div>
+        ) : (
+          <div style={cardBase}>
+            <p style={cardLabel}>Collected (month)</p>
+            <p style={{ ...cardValue, color: '#4F6EF7' }}>
+              {collections.filter(c => {
+                const d = new Date(c.date)
+                return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+              }).reduce((s, c) => s + parseInt(c.crates || 0), 0).toLocaleString()}
+              <span style={{ fontSize: '12px', fontWeight: 500, color: '#9CA3AF', marginLeft: '3px' }}>crates</span>
+            </p>
+            <p style={cardSub}>Log expenses to see profit</p>
+          </div>
+        )}
       </div>
     </div>
   )
+}
+
+const cardBase = {
+  background: 'white',
+  borderRadius: '14px',
+  padding: '14px',
+  boxShadow: '0 1px 8px rgba(0,0,0,0.07)',
+  border: '1px solid transparent',
+  transition: 'border-color 0.3s ease',
+}
+const lowStockStyle = {
+  animation: 'lowStockPulse 2s ease-in-out infinite',
+  border: '1.5px solid #FCA5A5',
+}
+const cardLabel = {
+  margin: '0 0 4px',
+  fontSize: '11px',
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  color: '#9CA3AF',
+}
+const cardValue = {
+  margin: '0 0 2px',
+  fontSize: '22px',
+  fontWeight: 800,
+  lineHeight: 1.1,
+  fontVariantNumeric: 'tabular-nums',
+}
+const cardSub = {
+  margin: 0,
+  fontSize: '11px',
+  color: '#9CA3AF',
 }
