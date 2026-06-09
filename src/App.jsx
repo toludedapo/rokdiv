@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { LayoutDashboard, PlusCircle, Clock, History, LogOut, Download, Loader2, WifiOff, RefreshCw } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Clock, History, LogOut, Download, Loader2, WifiOff, RefreshCw, Users } from 'lucide-react'
 import { useAuth } from './hooks/useAuth.jsx'
 import { useSales, useCollections, useCrateInventory } from './hooks/useCloudData.js'
 import { usePayments } from './hooks/usePayments.js'
@@ -14,9 +14,12 @@ import SalesForm from './components/SalesForm.jsx'
 import CreditTracker, { computeDebtors } from './components/CreditTracker.jsx'
 import CrateInventoryCard from './components/CrateInventoryCard.jsx'
 import HistoryLog from './components/HistoryLog.jsx'
+import UserManager from './components/UserManager.jsx'
 import Toast from './components/Toast.jsx'
 
-const TABS = [
+const ADMIN_EMAIL = 'dadimula1@gmail.com'
+
+const BASE_TABS = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'log',       label: 'Log Entry',  Icon: PlusCircle       },
   { id: 'credit',    label: 'Credit',     Icon: Clock            },
@@ -36,6 +39,13 @@ export default function App() {
 }
 
 function Dashboard({ user, onSignOut }) {
+  const isAdmin = user.email === ADMIN_EMAIL
+
+  // Admin gets an extra Users tab
+  const TABS = isAdmin
+    ? [...BASE_TABS, { id: 'users', label: 'Users', Icon: Users }]
+    : BASE_TABS
+
   const [tab,      setTab]      = useState('dashboard')
   const [toast,    setToast]    = useState('')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
@@ -65,8 +75,8 @@ function Dashboard({ user, onSignOut }) {
 
   useWeeklySummary(allSales, allCollections)
 
-  const cratesOut    = useMemo(() => allSales.reduce((sum,s) => sum+((s.crates_loaned||0)-(s.crates_returned||0)),0), [allSales])
-  const cratesInFarm = Math.max(0, (inventory?.total_owned ?? 0) - cratesOut)
+  const cratesOut     = useMemo(() => allSales.reduce((sum,s) => sum+((s.crates_loaned||0)-(s.crates_returned||0)),0), [allSales])
+  const cratesInFarm  = Math.max(0, (inventory?.total_owned ?? 0) - cratesOut)
   const paymentsTotal = useMemo(() => payments.reduce((s,p) => s+Number(p.amount),0), [payments])
 
   const handleReturnCrates = useCallback(async (saleId, newReturned) => {
@@ -102,44 +112,48 @@ function Dashboard({ user, onSignOut }) {
         position: 'sticky', top: 0, zIndex: 40,
         boxShadow: '0 1px 8px rgba(0,0,0,0.06)',
       }}>
+        {/* Left: logo + name */}
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#4F6EF7,#3B55E0)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, boxShadow:'0 2px 8px rgba(79,110,247,0.3)' }}>
+          <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#4F6EF7,#3B55E0)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, boxShadow:'0 2px 8px rgba(79,110,247,0.3)', flexShrink:0 }}>
             🥚
           </div>
           <div>
             <h1 style={{ fontSize:15, fontWeight:700, color:'#111827', letterSpacing:'-0.01em', lineHeight:1 }}>ROKDIV</h1>
-            <p style={{ fontSize:10, color:'#9CA3AF', lineHeight:1, marginTop:2 }}>{user.email}</p>
+            <p style={{ fontSize:10, color:'#9CA3AF', lineHeight:1, marginTop:2, maxWidth:160, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.email}</p>
           </div>
         </div>
 
-        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+        {/* Right: status pills + logout */}
+        <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0 }}>
           {!isOnline && (
-            <div style={{ display:'flex', alignItems:'center', gap:4, background:'#EEF1FF', border:'1px solid #C7D2FE', borderRadius:99, padding:'4px 10px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:4, background:'#EEF1FF', border:'1px solid #C7D2FE', borderRadius:99, padding:'4px 8px' }}>
               <WifiOff size={11} style={{ color:'#4F6EF7' }} />
               <span style={{ fontSize:10, fontWeight:700, color:'#4F6EF7' }}>Offline</span>
             </div>
           )}
           {isSyncing && (
-            <div style={{ display:'flex', alignItems:'center', gap:4, background:'#ECFDF5', border:'1px solid #A7F3D0', borderRadius:99, padding:'4px 10px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:4, background:'#ECFDF5', border:'1px solid #A7F3D0', borderRadius:99, padding:'4px 8px' }}>
               <RefreshCw size={10} style={{ color:'#059669' }} className="sync-spin" />
               <span style={{ fontSize:10, fontWeight:700, color:'#059669' }}>Syncing</span>
             </div>
           )}
           {offlineCount > 0 && !isSyncing && (
-            <div style={{ display:'flex', alignItems:'center', gap:4, background:'#EEF1FF', border:'1px solid #C7D2FE', borderRadius:99, padding:'4px 10px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:3, background:'#EEF1FF', border:'1px solid #C7D2FE', borderRadius:99, padding:'4px 8px' }}>
               <span style={{ fontSize:10, fontWeight:700, color:'#4F6EF7' }}>💾 {offlineCount}</span>
             </div>
           )}
           {showInstall && (
-            <button onClick={() => { deferredInstall?.prompt(); setShowInstall(false) }} style={{ fontSize:11, fontWeight:700, padding:'6px 12px', borderRadius:99, background:'#EEF1FF', border:'1px solid #C7D2FE', color:'#4F6EF7', cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
+            <button onClick={() => { deferredInstall?.prompt(); setShowInstall(false) }} style={{ fontSize:11, fontWeight:700, padding:'5px 10px', borderRadius:99, background:'#EEF1FF', border:'1px solid #C7D2FE', color:'#4F6EF7', cursor:'pointer', display:'flex', alignItems:'center', gap:4 }}>
               <Download size={10} /> Install
             </button>
           )}
-          <span style={{ fontSize:10, fontFamily:'JetBrains Mono, monospace', color:'#9CA3AF', background:'#F3F4F6', borderRadius:99, padding:'4px 10px', display:'none' }} className="sm:inline">
-            {todayLabel()}
-          </span>
-          <button onClick={onSignOut} title="Sign out" style={{ width:32, height:32, borderRadius:8, background:'#F3F4F6', border:'none', display:'flex', alignItems:'center', justifyContent:'center', color:'#6B7280', cursor:'pointer' }}>
-            <LogOut size={14} />
+          {/* Logout — always visible */}
+          <button
+            onClick={onSignOut}
+            title="Sign out"
+            style={{ width:34, height:34, borderRadius:10, background:'#FEF2F2', border:'1.5px solid #FECACA', display:'flex', alignItems:'center', justifyContent:'center', color:'#DC2626', cursor:'pointer', flexShrink:0 }}
+          >
+            <LogOut size={15} />
           </button>
         </div>
       </header>
@@ -183,6 +197,12 @@ function Dashboard({ user, onSignOut }) {
         {tab === 'history' && (
           <div style={{ paddingTop:12 }}>
             <HistoryLog sales={allSales} collections={allCollections} onClearAll={clearAll} showToast={showToast} />
+          </div>
+        )}
+
+        {tab === 'users' && isAdmin && (
+          <div style={{ paddingTop:12 }}>
+            <UserManager adminEmail={ADMIN_EMAIL} />
           </div>
         )}
       </main>
