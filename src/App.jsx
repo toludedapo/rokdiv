@@ -14,7 +14,8 @@ import CreditTracker   from './components/CreditTracker'
 import HistoryLog      from './components/HistoryLog'
 import ExpenseTracker  from './components/ExpenseTracker'
 import UserManager     from './components/UserManager'
-import Toast           from './components/Toast'
+import Toast              from './components/Toast'
+import CrateInventoryCard from './components/CrateInventoryCard'
 
 const ADMIN_EMAIL = 'dadimula1@gmail.com'
 
@@ -31,7 +32,7 @@ export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
   const { collections, addCollection } = useCollections(user?.id)
   const { sales, addSale, markPaid } = useSales(user?.id)
-  const { inventory } = useCrateInventory(user?.id)
+  const { inventory, setTotalOwned } = useCrateInventory(user?.id)
 
   const { payments, addPayment, deletePayment } = usePayments(user?.id)
   const { expenses, addExpense, deleteExpense }  = useExpenses(user?.id)
@@ -181,7 +182,17 @@ export default function App() {
       {/* Content */}
       <div style={{ padding:'16px 14px', paddingBottom:'90px' }}>
         {activeTab === 'dashboard' && (
-          <SummaryCards collections={collections} sales={sales} expenses={expenses} />
+          <>
+            <SummaryCards collections={collections} sales={sales} expenses={expenses} />
+            <div style={{ marginTop: '12px' }}>
+              <CrateInventoryCard
+                inventory={inventory}
+                cratesOut={(sales || []).reduce((s, sale) => s + (parseInt(sale.crates_loaned || 0) - parseInt(sale.crates_returned || 0)), 0)}
+                loading={false}
+                onSetTotalOwned={setTotalOwned}
+              />
+            </div>
+          </>
         )}
         {activeTab === 'collect' && (
           <CollectionForm collections={collections || []} onSave={handleAddCollection} onDelete={() => {}} onQueueOffline={() => {}} showToast={showToast} />

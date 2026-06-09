@@ -162,3 +162,61 @@
   outline: 2px solid #4F6EF7;
   outline-offset: 2px;
 }
+
+/* ── Crate inventory progress bar ───────────────────────────── */
+.progress-track {
+  height: 6px;
+  border-radius: 99px;
+  background: #F3F4F6;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #4F6EF7, #3B55E0);
+  transition: width 0.4s ease;
+}
+
+.progress-fill-warn {
+  background: linear-gradient(90deg, #F59E0B, #D97706);
+}
+
+/* ── Danger button ───────────────────────────────────────────── */
+.btn-danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 11px;
+  background: #FEF2F2;
+  color: #DC2626;
+  border: 1.5px solid #FECACA;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease;
+}
+
+.btn-danger:hover {
+  background: #FEE2E2;
+}
+
+/* ── WhatsApp button ─────────────────────────────────────────── */
+.wa-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #25D366;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+}
