@@ -38,7 +38,7 @@ export function useExpenses(userId) {
       .from('expenses')
       .insert([{ user_id: userId, category, amount: parseFloat(amount), date, notes: notes || null }])
       .select()
-      .single()
+      .maybeSingle()
 
     if (!error && data) {
       setExpenses(prev => [data, ...prev])
