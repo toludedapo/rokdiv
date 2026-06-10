@@ -58,7 +58,7 @@ export function usePayments(userId) {
       .from('payments')
       .insert([{ user_id: userId, sale_id, amount, date, notes }])
       .select()
-      .single()
+      .maybeSingle()
     if (error) throw error
     setPayments(prev => [data, ...prev])
   }, [userId])
