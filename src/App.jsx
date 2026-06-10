@@ -32,7 +32,7 @@ const NAV_TABS = [
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
   const { collections, addCollection } = useCollections(user?.id)
-  const { sales, addSale, markPaid } = useSales(user?.id)
+  const { sales, addSale, updateSale, markPaid } = useSales(user?.id)
   const { inventory, setTotalOwned } = useCrateInventory(user?.id)
 
   const { payments, addPayment, deletePayment } = usePayments(user?.id)
@@ -96,6 +96,11 @@ export default function App() {
     const { error } = await markPaid(saleId)
     if (!error) showToast('Marked as paid ✓')
     else showToast('Could not update')
+  }
+
+  async function handleReturnCrates(saleId, newReturnedCount) {
+    const { error } = await updateSale(saleId, { crates_returned: newReturnedCount })
+    if (error) showToast('Could not update crate return')
   }
 
   async function handleAddPayment(data) {
@@ -215,7 +220,7 @@ export default function App() {
           <CollectionForm collections={collections || []} onSave={handleAddCollection} onDelete={() => {}} onQueueOffline={() => {}} showToast={showToast} />
         )}
         {activeTab === 'sales' && (
-          <SalesForm sales={sales || []} cratesInFarm={inventory?.total_owned ?? 0} onSave={handleAddSale} onDelete={() => {}} onMarkPaid={handleMarkPaid} onQueueOffline={() => {}} showToast={showToast} />
+          <SalesForm sales={sales || []} cratesInFarm={inventory?.total_owned ?? 0} onSave={handleAddSale} onDelete={() => {}} onMarkPaid={handleMarkPaid} onReturnCrates={handleReturnCrates} onQueueOffline={() => {}} showToast={showToast} />
         )}
         {activeTab === 'credit' && (
           <CreditTracker
