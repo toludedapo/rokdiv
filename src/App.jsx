@@ -145,11 +145,11 @@ export default function App() {
   }
 
   async function handleClearAll() {
-    await supabase.from('payments').delete().eq('user_id', user.id)
-    await supabase.from('expenses').delete().eq('user_id', user.id)
-    await supabase.from('sales').delete().eq('user_id', user.id)
-    await supabase.from('collections').delete().eq('user_id', user.id)
-    await supabase.from('crate_inventory').delete().eq('user_id', user.id)
+    const { error } = await supabase.rpc('clear_user_data')
+    if (error) {
+      showToast('Could not clear data: ' + error.message)
+      return
+    }
     showToast('All data cleared')
     setTimeout(() => signOut(), 1000)
   }
