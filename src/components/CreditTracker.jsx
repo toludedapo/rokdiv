@@ -130,20 +130,22 @@ export default function CreditTracker({
     return `https://wa.me/?text=${msg}`
   }
 
-  if (debtors.length === 0) {
-    return (
-      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9CA3AF' }}>
-        <div style={{ fontSize: '40px', marginBottom: '12px' }}>✅</div>
-        <p style={{ fontWeight: 700, color: '#111827', fontSize: '16px', margin: '0 0 4px' }}>All clear</p>
-        <p style={{ fontSize: '13px', margin: 0 }}>No outstanding credit balances</p>
-      </div>
-    )
-  }
+  // Don't early-return when no debtors — crates may still be outstanding
+  // for cash sales that are paid but crates not yet returned
 
   return (
     <div style={{ paddingBottom: '100px' }}>
-      {/* Summary row */}
-      <div style={{
+      {/* All clear notice - shown when no money owed but may still have crates out */}
+      {debtors.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '32px 20px 16px', color: '#9CA3AF' }}>
+          <div style={{ fontSize: '36px', marginBottom: '8px' }}>✅</div>
+          <p style={{ fontWeight: 700, color: '#111827', fontSize: '15px', margin: '0 0 4px' }}>No outstanding balances</p>
+          <p style={{ fontSize: '12px', margin: 0 }}>All credit accounts are settled</p>
+        </div>
+      )}
+
+      {/* Summary row - only shown when there are debtors */}
+      {debtors.length > 0 && <div style={{
         background: '#FEF3C7', borderRadius: '12px', padding: '12px 14px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         marginBottom: '16px', border: '1px solid #FDE68A'
@@ -162,7 +164,7 @@ export default function CreditTracker({
             {debtors.filter(d => Math.floor((Date.now() - new Date(d.oldest)) / 86400000) > 14).length} overdue &gt;14 days
           </p>
         </div>
-      </div>
+      </div>}
 
       {/* Debtor cards */}
       {debtors.map(debtor => {
