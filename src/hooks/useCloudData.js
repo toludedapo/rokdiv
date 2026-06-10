@@ -41,6 +41,7 @@ export function useSales(userId) {
   }
 
   const updateSale = async (id, updates) => {
+    setSales(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
     const { error } = await supabase.from('sales').update(updates).eq('id', id).eq('user_id', userId)
     return { error }
   }
