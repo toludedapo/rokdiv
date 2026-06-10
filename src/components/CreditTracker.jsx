@@ -209,6 +209,13 @@ export default function CreditTracker({
                     Remind
                   </span>
                 </a>
+                {/* Return Crates button - only shown if any sale has outstanding crates */}
+                {debtor.sales.some(s => parseInt(s.crates_loaned || 0) - parseInt(s.crates_returned || 0) > 0) && (
+                  <button onClick={() => setExpandedCustomer(isExpanded ? null : debtor.name)}
+                    style={actionBtn('#D97706')}>
+                    📦 Return Crates
+                  </button>
+                )}
               </div>
             </div>
 
@@ -330,39 +337,30 @@ export default function CreditTracker({
                             </span>
                           )}
                         </p>
-                        {/* Crate return inline form */}
+                        {/* Crate return form - shows inline when card is expanded */}
                         {parseInt(sale.crates_loaned || 0) - parseInt(sale.crates_returned || 0) > 0 && (
-                          <div style={{ marginTop: '6px' }}>
-                            {returningSaleId === sale.id ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <input
-                                  type="number" inputMode="numeric"
-                                  placeholder={`Max ${parseInt(sale.crates_loaned) - parseInt(sale.crates_returned || 0)}`}
-                                  value={returnQty}
-                                  onChange={e => setReturnQty(e.target.value)}
-                                  style={{ width: 80, padding: '4px 8px', borderRadius: '7px',
-                                    border: '1.5px solid #4F6EF7', fontSize: '12px', outline: 'none' }}
-                                  autoFocus
-                                />
-                                <button onClick={() => handleCrateReturn(sale)} disabled={returning}
-                                  style={{ padding: '4px 10px', borderRadius: '7px', background: '#4F6EF7',
-                                    color: 'white', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
-                                  {returning ? '...' : 'Confirm'}
-                                </button>
-                                <button onClick={() => { setReturningSaleId(null); setReturnQty('') }}
-                                  style={{ padding: '4px 8px', borderRadius: '7px', background: '#F3F4F6',
-                                    color: '#6B7280', border: 'none', fontSize: '11px', cursor: 'pointer' }}>
-                                  Cancel
-                                </button>
-                              </div>
-                            ) : (
-                              <button onClick={() => { setReturningSaleId(sale.id); setReturnQty('') }}
-                                style={{ fontSize: '11px', color: '#D97706', fontWeight: 700,
-                                  textDecoration: 'underline', textUnderlineOffset: '3px',
-                                  background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                                📦 Record Crate Return
-                              </button>
-                            )}
+                          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 600 }}>
+                              📦 Return:
+                            </span>
+                            <input
+                              type="number" inputMode="numeric"
+                              placeholder={`max ${parseInt(sale.crates_loaned) - parseInt(sale.crates_returned || 0)}`}
+                              value={returningSaleId === sale.id ? returnQty : ''}
+                              onChange={e => { setReturningSaleId(sale.id); setReturnQty(e.target.value) }}
+                              style={{ width: 90, padding: '4px 8px', borderRadius: '7px',
+                                border: '1.5px solid #D97706', fontSize: '12px', outline: 'none',
+                                background: '#FFFBEB' }}
+                            />
+                            <button
+                              onClick={() => handleCrateReturn(sale)}
+                              disabled={returning || returningSaleId !== sale.id || !returnQty}
+                              style={{ padding: '4px 10px', borderRadius: '7px',
+                                background: returning ? '#F3F4F6' : '#D97706',
+                                color: returning ? '#9CA3AF' : 'white',
+                                border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                              {returning && returningSaleId === sale.id ? '...' : 'Confirm'}
+                            </button>
                           </div>
                         )}
                       </div>
