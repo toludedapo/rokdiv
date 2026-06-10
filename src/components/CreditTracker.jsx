@@ -93,7 +93,8 @@ export default function CreditTracker({
       const owed = parseFloat(sale.amount) - alreadyPaid
       if (owed <= 0) continue
       const applying = Math.min(owed, remaining)
-      await onAddPayment({ sale_id: sale.id, amount: applying, date: new Date().toISOString().slice(0,10), notes })
+      const result = await onAddPayment({ sale_id: sale.id, amount: applying, date: new Date().toISOString().slice(0,10), notes })
+      if (result?.error) break
       remaining -= applying
     }
     setSaving(false)

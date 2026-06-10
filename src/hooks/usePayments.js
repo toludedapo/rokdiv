@@ -1,18 +1,5 @@
-// ── Payments hook — add this to your existing useCloudData.js file ──────────
-// Or create a new file src/hooks/usePayments.js and import from there.
-//
-// usePayments(userId) returns:
-//   payments      — array of payment records
-//   loading       — bool
-//   addPayment    — async ({ sale_id, amount, date, notes }) => void
-//   deletePayment — async (id) => void
-//
-// Example usage in App.jsx:
-//   import { usePayments } from './hooks/usePayments'
-//   const { payments, addPayment } = usePayments(user.id)
-
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'  // adjust path if needed
+import { supabase } from '../lib/supabase'
 
 export function usePayments(userId) {
   const [payments, setPayments] = useState([])
@@ -22,7 +9,6 @@ export function usePayments(userId) {
     if (!userId) return
     setLoading(true)
 
-    // Initial fetch
     supabase
       .from('payments')
       .select('*')
@@ -33,11 +19,9 @@ export function usePayments(userId) {
         setLoading(false)
       })
 
-    // Realtime subscription
     const channel = supabase
       .channel(`payments:${userId}`)
-      .on(
-        'postgres_changes',
+      .on('postgres_changes',
         { event: '*', schema: 'public', table: 'payments', filter: `user_id=eq.${userId}` },
         () => {
           supabase
@@ -53,20 +37,21 @@ export function usePayments(userId) {
     return () => supabase.removeChannel(channel)
   }, [userId])
 
-  const addPayment = useCallback(async ({ sale_id, amount, date, notes }) => {
+  // FIX: return {error} instead of throwing so callers don't need try/catch
+  const addPayment = useCallback(async ({ sale_id, amount, date, notes, user_id }) => {
     const { data, error } = await supabase
       .from('payments')
-      .insert([{ user_id: userId, sale_id, amount, date, notes }])
+      .insert([{ user_id: user_id || userId, sale_id, amount, date, notes }])
       .select()
       .maybeSingle()
-    if (error) throw error
-    setPayments(prev => [data, ...prev])
+    if (!error && data) setPayments(prev => [data, ...prev])
+    return { data, error }
   }, [userId])
 
   const deletePayment = useCallback(async (id) => {
     const { error } = await supabase.from('payments').delete().eq('id', id)
-    if (error) throw error
-    setPayments(prev => prev.filter(p => p.id !== id))
+    if (!error) setPayments(prev => prev.filter(p => p.id !== id))
+    return { error }
   }, [])
 
   return { payments, loading, addPayment, deletePayment }

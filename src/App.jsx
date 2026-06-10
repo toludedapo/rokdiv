@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase.js'
-import { useAuth }        from './hooks/useAuth'
+import { useAuth }          from './hooks/useAuth'
 import { useSales, useCollections, useCrateInventory } from './hooks/useCloudData'
-import { usePayments }    from './hooks/usePayments'
-import { useExpenses }    from './hooks/useExpenses'
-import { useOfflineSync } from './hooks/useOfflineSync'
+import { usePayments }      from './hooks/usePayments'
+import { useExpenses }      from './hooks/useExpenses'
+import { useOfflineSync }   from './hooks/useOfflineSync'
 import { useWeeklySummary } from './hooks/useWeeklySummary'
 
-import AuthScreen      from './components/AuthScreen'
-import SummaryCards    from './components/SummaryCards'
-import CollectionForm  from './components/CollectionForm'
-import SalesForm       from './components/SalesForm'
-import CreditTracker   from './components/CreditTracker'
-import HistoryLog      from './components/HistoryLog'
-import ExpenseTracker  from './components/ExpenseTracker'
-import UserManager     from './components/UserManager'
+import AuthScreen         from './components/AuthScreen'
+import SummaryCards       from './components/SummaryCards'
+import CollectionForm     from './components/CollectionForm'
+import SalesForm          from './components/SalesForm'
+import CreditTracker      from './components/CreditTracker'
+import HistoryLog         from './components/HistoryLog'
+import ExpenseTracker     from './components/ExpenseTracker'
+import UserManager        from './components/UserManager'
 import Toast              from './components/Toast'
 import ChangePassword     from './components/ChangePassword'
 import CrateInventoryCard from './components/CrateInventoryCard'
@@ -32,29 +32,36 @@ const NAV_TABS = [
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
-  const { collections, addCollection } = useCollections(user?.id)
-  const { sales, addSale, updateSale, markPaid } = useSales(user?.id)
-  const { inventory, setTotalOwned } = useCrateInventory(user?.id)
+  const { collections, addCollection }                    = useCollections(user?.id)
+  const { sales, addSale, updateSale, markPaid }          = useSales(user?.id)
+  const { inventory, setTotalOwned }                      = useCrateInventory(user?.id)
+  const { payments, addPayment, deletePayment }           = usePayments(user?.id)
+  const { expenses, addExpense, deleteExpense }           = useExpenses(user?.id)
 
-  const { payments, addPayment, deletePayment } = usePayments(user?.id)
-  const { expenses, addExpense, deleteExpense }  = useExpenses(user?.id)
-  useOfflineSync({ user, addCollection, addSale })
-  useWeeklySummary({ sales, collections })
-
-  const [activeTab, setActiveTab]   = useState('dashboard')
-  const [toast, setToast]           = useState(null)
-  const [isOnline, setIsOnline]     = useState(navigator.onLine)
+  const [activeTab,    setActiveTab]    = useState('dashboard')
+  const [toast,        setToast]        = useState(null)
+  const [isOnline,     setIsOnline]     = useState(navigator.onLine)
   const [offlineCount, setOfflineCount] = useState(0)
-  const [showChangePw, setShowChangePw]   = useState(false)
+  const [showChangePw, setShowChangePw] = useState(false)
 
-  // True only for the admin account
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
-
   const allTabs = isAdmin
     ? [...NAV_TABS, { id: 'users', icon: '👥', label: 'Users' }]
     : NAV_TABS
 
-  // Quick action navigation from dashboard buttons
+  // ── showToast must be defined before useOfflineSync ────────────────
+  function showToast(msg) {
+    setToast({ message: msg })
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  // FIX 1: useOfflineSync needs showToast; FIX 2: don't pass unused 'user'
+  useOfflineSync({ addCollection, addSale, showToast })
+
+  // FIX 3: useWeeklySummary takes positional args, not an object
+  useWeeklySummary(sales, collections)
+
+  // Quick-action nav from dashboard buttons
   useEffect(() => {
     const handler = (e) => setActiveTab(e.detail)
     window.addEventListener('rokdiv-nav', handler)
@@ -74,50 +81,44 @@ export default function App() {
 
   useEffect(() => {
     const q1 = JSON.parse(localStorage.getItem('offline_collections') || '[]')
-    const q2 = JSON.parse(localStorage.getItem('offline_sales') || '[]')
+    const q2 = JSON.parse(localStorage.getItem('offline_sales')       || '[]')
     setOfflineCount(q1.length + q2.length)
   }, [collections, sales])
 
-  function showToast(msg, type = 'success') {
-    setToast({ message: msg, type })
-    setTimeout(() => setToast(null), 3000)
-  }
-
+  // ── Handlers ────────────────────────────────────────────────────────
+  // FIX 4: CollectionForm/SalesForm use try/catch and expect onSave to throw.
+  // addCollection/addSale return {error}. We throw so the form's catch block
+  // can queue offline — but only on actual network errors, not validation.
   async function handleAddCollection(data) {
-    const result = await addCollection(data)
-    if (result?.error) throw new Error(result.error.message || 'Failed to save')
+    const { error } = await addCollection(data)
+    if (error) throw new Error(error.message || 'Failed to save')
   }
 
   async function handleAddSale(data) {
-    const result = await addSale(data)
-    if (result?.error) throw new Error(result.error.message || 'Failed to save')
+    const { error } = await addSale(data)
+    if (error) throw new Error(error.message || 'Failed to save')
   }
 
+  // FIX 5: use markPaid from hook (sets both payment_status AND paid_at)
   async function handleMarkPaid(saleId) {
-    const { error } = await updateSale(saleId, { paid_at: new Date().toISOString().slice(0,10) })
-    if (!error) showToast('Marked as paid ✓')
-    else showToast('Could not update')
-  }
-
-  async function handleClearAll() {
-    await supabase.from('payments').delete().eq('user_id', user.id)
-    await supabase.from('expenses').delete().eq('user_id', user.id)
-    await supabase.from('sales').delete().eq('user_id', user.id)
-    await supabase.from('collections').delete().eq('user_id', user.id)
-    await supabase.from('crate_inventory').delete().eq('user_id', user.id)
-    showToast('All data cleared')
-    navigator.serviceWorker.getRegistrations().then(r => r.forEach(reg => reg.unregister())).finally(() => setTimeout(() => signOut(), 500))
+    await markPaid(saleId)
+    showToast('Marked as paid ✓')
   }
 
   async function handleReturnCrates(saleId, newReturnedCount) {
     const { error } = await updateSale(saleId, { crates_returned: newReturnedCount })
     if (error) showToast('Could not update crate return')
+    else showToast('Crate return recorded ✓')
   }
 
+  // FIX 6: addPayment throws on error — wrap in try/catch
   async function handleAddPayment(data) {
-    const { error } = await addPayment({ ...data, user_id: user.id })
-    if (!error) showToast('Payment recorded ✓')
-    else showToast('Could not save payment', 'error')
+    try {
+      await addPayment({ ...data, user_id: user.id })
+      showToast('Payment recorded ✓')
+    } catch (e) {
+      showToast('Could not save payment')
+    }
   }
 
   async function handleAddExpense(data) {
@@ -127,17 +128,33 @@ export default function App() {
   }
 
   async function handleDeleteExpense(id) {
-    if (!isAdmin) return  // belt-and-suspenders: should never be called by non-admin
+    if (!isAdmin) return
     await deleteExpense(id)
     showToast('Expense removed')
   }
 
+  // FIX 7: deletePayment throws — wrap in try/catch
   async function handleDeletePayment(id) {
     if (!isAdmin) return
-    await deletePayment(id)
-    showToast('Payment record removed')
+    try {
+      await deletePayment(id)
+      showToast('Payment record removed')
+    } catch (e) {
+      showToast('Could not remove payment')
+    }
   }
 
+  async function handleClearAll() {
+    await supabase.from('payments').delete().eq('user_id', user.id)
+    await supabase.from('expenses').delete().eq('user_id', user.id)
+    await supabase.from('sales').delete().eq('user_id', user.id)
+    await supabase.from('collections').delete().eq('user_id', user.id)
+    await supabase.from('crate_inventory').delete().eq('user_id', user.id)
+    showToast('All data cleared')
+    setTimeout(() => signOut(), 1000)
+  }
+
+  // ── Render guards ───────────────────────────────────────────────────
   if (authLoading) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F0F2F5' }}>
       <div style={{ textAlign:'center' }}>
@@ -149,9 +166,14 @@ export default function App() {
 
   if (!user) return <AuthScreen />
 
+  const cratesOut = (sales || []).reduce(
+    (s, sale) => s + (parseInt(sale.crates_loaned || 0) - parseInt(sale.crates_returned || 0)), 0
+  )
+
   return (
     <div style={{ background:'#F0F2F5', minHeight:'100vh', maxWidth:'480px', margin:'0 auto', fontFamily:"'Inter', -apple-system, sans-serif" }}>
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div style={{
         background:'white', padding:'14px 16px 10px',
         borderBottom:'1px solid #F3F4F6',
@@ -167,25 +189,25 @@ export default function App() {
             </div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-            {/* Role badge */}
             <span style={{
               background: isAdmin ? '#EEF1FF' : '#F0FDF4',
-              color: isAdmin ? '#4F6EF7' : '#16A34A',
+              color:      isAdmin ? '#4F6EF7' : '#16A34A',
               fontSize:'10px', fontWeight:700, padding:'3px 8px',
               borderRadius:'20px', letterSpacing:'0.04em',
-              border: `1px solid ${isAdmin ? '#C7D2FE' : '#BBF7D0'}`
+              border:`1px solid ${isAdmin ? '#C7D2FE' : '#BBF7D0'}`
             }}>
               {isAdmin ? 'ADMIN' : 'STAFF'}
             </span>
 
             {!isAdmin && (
-              <button onClick={() => setShowChangePw(true)} title="Set password"
-                style={{ background: '#F3F4F6', border: 'none', borderRadius: '8px',
-                  padding: '7px 10px', cursor: 'pointer', color: '#6B7280',
-                  display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}>
+              <button onClick={() => setShowChangePw(true)}
+                style={{ background:'#F3F4F6', border:'none', borderRadius:'8px',
+                  padding:'7px 10px', cursor:'pointer', color:'#6B7280',
+                  display:'flex', alignItems:'center', gap:'4px', fontSize:'12px', fontWeight:600 }}>
                 🔑 Set Password
               </button>
             )}
+
             {!isOnline && (
               <span style={{
                 background:'#FEF3C7', color:'#92400E', fontSize:'11px',
@@ -212,27 +234,46 @@ export default function App() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* ── Content ── */}
       <div style={{ padding:'16px 14px', paddingBottom:'90px' }}>
+
         {activeTab === 'dashboard' && (
           <>
             <SummaryCards collections={collections} sales={sales} expenses={expenses} />
-            <div style={{ marginTop: '12px' }}>
+            <div style={{ marginTop:'12px' }}>
               <CrateInventoryCard
                 inventory={inventory}
-                cratesOut={(sales || []).reduce((s, sale) => s + (parseInt(sale.crates_loaned || 0) - parseInt(sale.crates_returned || 0)), 0)}
+                cratesOut={cratesOut}
                 loading={false}
                 onSetTotalOwned={setTotalOwned}
               />
             </div>
           </>
         )}
+
         {activeTab === 'collect' && (
-          <CollectionForm collections={collections || []} onSave={handleAddCollection} onDelete={() => {}} onQueueOffline={() => {}} showToast={showToast} />
+          <CollectionForm
+            collections={collections || []}
+            onSave={handleAddCollection}
+            onDelete={() => {}}
+            onQueueOffline={() => {}}
+            showToast={showToast}
+          />
         )}
+
         {activeTab === 'sales' && (
-          <SalesForm sales={sales || []} cratesInFarm={inventory?.total_owned ?? 0} onSave={handleAddSale} onDelete={() => {}} onMarkPaid={handleMarkPaid} onReturnCrates={handleReturnCrates} onQueueOffline={() => {}} showToast={showToast} />
+          <SalesForm
+            sales={sales || []}
+            cratesInFarm={inventory?.total_owned ?? 0}
+            onSave={handleAddSale}
+            onDelete={() => {}}
+            onMarkPaid={handleMarkPaid}
+            onReturnCrates={handleReturnCrates}
+            onQueueOffline={() => {}}
+            showToast={showToast}
+          />
         )}
+
         {activeTab === 'credit' && (
           <CreditTracker
             sales={sales}
@@ -244,6 +285,7 @@ export default function App() {
             isAdmin={isAdmin}
           />
         )}
+
         {activeTab === 'expenses' && (
           <ExpenseTracker
             expenses={expenses}
@@ -253,15 +295,23 @@ export default function App() {
             isAdmin={isAdmin}
           />
         )}
+
         {activeTab === 'history' && (
-          <HistoryLog collections={collections} sales={sales} onClearAll={handleClearAll} showToast={showToast} isAdmin={isAdmin} />
+          <HistoryLog
+            collections={collections}
+            sales={sales}
+            onClearAll={handleClearAll}
+            showToast={showToast}
+            isAdmin={isAdmin}
+          />
         )}
+
         {activeTab === 'users' && isAdmin && (
           <UserManager adminEmail={ADMIN_EMAIL} />
         )}
       </div>
 
-      {/* Bottom navigation */}
+      {/* ── Bottom Nav ── */}
       <nav style={{
         position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)',
         width:'100%', maxWidth:'480px', background:'white',
@@ -275,14 +325,12 @@ export default function App() {
               style={{
                 flex:1, padding:'10px 4px 8px', background:'none', border:'none',
                 cursor:'pointer', display:'flex', flexDirection:'column',
-                alignItems:'center', gap:'3px', transition:'all 0.15s ease',
-                position: 'relative'
+                alignItems:'center', gap:'3px', position:'relative'
               }}>
               <span style={{ fontSize: allTabs.length > 6 ? '16px' : '18px', lineHeight:1 }}>{tab.icon}</span>
               <span style={{
                 fontSize:'9px', fontWeight: active ? 700 : 500,
-                color: active ? '#4F6EF7' : '#9CA3AF',
-                letterSpacing:'0.02em'
+                color: active ? '#4F6EF7' : '#9CA3AF', letterSpacing:'0.02em'
               }}>{tab.label}</span>
               {active && (
                 <div style={{

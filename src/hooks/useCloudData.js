@@ -36,7 +36,12 @@ export function useSales(userId) {
   }, [userId, fetch])
 
   const addSale = async (sale) => {
-    const { error } = await supabase.from('sales').insert({ ...sale, user_id: userId })
+    const { data, error } = await supabase
+      .from('sales')
+      .insert({ ...sale, user_id: userId })
+      .select()
+      .maybeSingle()
+    if (!error && data) setSales(prev => [data, ...prev])
     return { error }
   }
 
@@ -89,7 +94,12 @@ export function useCollections(userId) {
   }, [userId, fetch])
 
   const addCollection = async (col) => {
-    const { error } = await supabase.from('collections').insert({ ...col, user_id: userId })
+    const { data, error } = await supabase
+      .from('collections')
+      .insert({ ...col, user_id: userId })
+      .select()
+      .maybeSingle()
+    if (!error && data) setCollections(prev => [data, ...prev])
     return { error }
   }
 
