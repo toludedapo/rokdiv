@@ -37,17 +37,17 @@ export function useSales(userId) {
 
   const addSale = async (sale) => {
     const { error } = await supabase.from('sales').insert({ ...sale, user_id: userId })
-    if (error) throw error
+    return { error }
   }
 
   const updateSale = async (id, updates) => {
     const { error } = await supabase.from('sales').update(updates).eq('id', id).eq('user_id', userId)
-    if (error) throw error
+    return { error }
   }
 
   const deleteSale = async (id) => {
     const { error } = await supabase.from('sales').delete().eq('id', id).eq('user_id', userId)
-    if (error) throw error
+    return { error }
   }
 
   const markPaid = async (id) => {
@@ -89,12 +89,12 @@ export function useCollections(userId) {
 
   const addCollection = async (col) => {
     const { error } = await supabase.from('collections').insert({ ...col, user_id: userId })
-    if (error) throw error
+    return { error }
   }
 
   const deleteCollection = async (id) => {
     const { error } = await supabase.from('collections').delete().eq('id', id).eq('user_id', userId)
-    if (error) throw error
+    return { error }
   }
 
   return { collections, loading, addCollection, deleteCollection }
@@ -133,7 +133,7 @@ export function useCrateInventory(userId) {
     const { error } = await supabase
       .from('crate_inventory')
       .upsert({ user_id: userId, total_owned, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
-    if (error) throw error
+    return { error }
   }
 
   return { inventory, loading, setTotalOwned }
