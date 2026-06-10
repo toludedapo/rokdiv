@@ -111,7 +111,7 @@ export function useCrateInventory(userId) {
       .from('crate_inventory')
       .select('*')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
     setInventory(data ?? { total_owned: 0 })
     setLoading(false)
   }, [userId])
