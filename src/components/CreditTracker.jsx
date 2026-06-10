@@ -37,6 +37,22 @@ export default function CreditTracker({
 
   const totalOutstanding = debtors.reduce((s, d) => s + d.total, 0)
 
+  // All customers with outstanding crates (regardless of payment status)
+  const cratesOutCustomers = useMemo(() => {
+    const map = {}
+    sales.forEach(s => {
+      const loaned = parseInt(s.crates_loaned || 0)
+      const returned = parseInt(s.crates_returned || 0)
+      const outstanding = loaned - returned
+      if (outstanding <= 0) return
+      const name = s.customer_name || 'Unknown'
+      if (!map[name]) map[name] = { name, sales: [], totalOut: 0 }
+      map[name].sales.push({ ...s, outstanding })
+      map[name].totalOut += outstanding
+    })
+    return Object.values(map).sort((a, b) => b.totalOut - a.totalOut)
+  }, [sales])
+
   function paidForSale(saleId) {
     return payments
       .filter(p => p.sale_id === saleId)
@@ -397,6 +413,68 @@ export default function CreditTracker({
           </div>
         )
       })}
+      {/* ── Crates Out Section ─────────────────────────────── */}
+      {cratesOutCustomers.length > 0 && (
+        <div style={{ marginTop: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '16px' }}>📦</span>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#111827' }}>Crates Still Out</span>
+            <span style={{ fontSize: '11px', background: '#FFFBEB', color: '#D97706',
+              border: '1px solid #FDE68A', borderRadius: '20px', padding: '2px 8px', fontWeight: 600 }}>
+              {cratesOutCustomers.reduce((s, c) => s + c.totalOut, 0)} total
+            </span>
+          </div>
+
+          {cratesOutCustomers.map(customer => (
+            <div key={customer.name} style={{
+              background: 'white', borderRadius: '14px', marginBottom: '10px',
+              boxShadow: '0 1px 8px rgba(0,0,0,0.07)', overflow: 'hidden'
+            }}>
+              <div style={{ padding: '12px 14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: 700, fontSize: '14px', color: '#111827' }}>{customer.name}</span>
+                  <span style={{ fontSize: '14px', fontWeight: 800, color: '#D97706' }}>
+                    {customer.totalOut} crate{customer.totalOut !== 1 ? 's' : ''} out
+                  </span>
+                </div>
+
+                {customer.sales.map(sale => (
+                  <div key={sale.id} style={{ marginBottom: '10px' }}>
+                    <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#9CA3AF' }}>
+                      {new Date(sale.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                      {' · '}loaned {sale.crates_loaned}, returned {sale.crates_returned || 0},
+                      {' '}
+                      <span style={{ color: '#D97706', fontWeight: 600 }}>{sale.outstanding} still out</span>
+                    </p>
+                    {/* Inline return form */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 600 }}>Return:</span>
+                      <input
+                        type="number" inputMode="numeric"
+                        placeholder={`max ${sale.outstanding}`}
+                        value={returningSaleId === sale.id ? returnQty : ''}
+                        onChange={e => { setReturningSaleId(sale.id); setReturnQty(e.target.value) }}
+                        style={{ width: 90, padding: '5px 8px', borderRadius: '7px',
+                          border: '1.5px solid #D97706', fontSize: '12px', outline: 'none',
+                          background: '#FFFBEB' }}
+                      />
+                      <button
+                        onClick={() => handleCrateReturn(sale)}
+                        disabled={returning || returningSaleId !== sale.id || !returnQty}
+                        style={{ padding: '5px 12px', borderRadius: '7px',
+                          background: (returning && returningSaleId === sale.id) ? '#F3F4F6' : '#D97706',
+                          color: (returning && returningSaleId === sale.id) ? '#9CA3AF' : 'white',
+                          border: 'none', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+                        {returning && returningSaleId === sale.id ? '...' : 'Confirm'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
