@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase.js'
 import { useAuth }        from './hooks/useAuth'
 import { useSales, useCollections, useCrateInventory } from './hooks/useCloudData'
 import { usePayments }    from './hooks/usePayments'
@@ -96,6 +97,14 @@ export default function App() {
     const { error } = await updateSale(saleId, { paid_at: new Date().toISOString().slice(0,10) })
     if (!error) showToast('Marked as paid ✓')
     else showToast('Could not update')
+  }
+
+  async function handleClearAll() {
+    await supabase.from('payments').delete().eq('user_id', user.id)
+    await supabase.from('expenses').delete().eq('user_id', user.id)
+    await supabase.from('sales').delete().eq('user_id', user.id)
+    await supabase.from('collections').delete().eq('user_id', user.id)
+    showToast('All data cleared')
   }
 
   async function handleReturnCrates(saleId, newReturnedCount) {
@@ -243,7 +252,7 @@ export default function App() {
           />
         )}
         {activeTab === 'history' && (
-          <HistoryLog collections={collections} sales={sales} onClearAll={() => {}} showToast={showToast} isAdmin={isAdmin} />
+          <HistoryLog collections={collections} sales={sales} onClearAll={handleClearAll} showToast={showToast} isAdmin={isAdmin} />
         )}
         {activeTab === 'users' && isAdmin && (
           <UserManager adminEmail={ADMIN_EMAIL} />
