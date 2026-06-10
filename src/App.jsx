@@ -104,6 +104,7 @@ export default function App() {
     await supabase.from('expenses').delete().eq('user_id', user.id)
     await supabase.from('sales').delete().eq('user_id', user.id)
     await supabase.from('collections').delete().eq('user_id', user.id)
+    await supabase.from('crate_inventory').delete().eq('user_id', user.id)
     showToast('All data cleared')
     navigator.serviceWorker.getRegistrations().then(r => r.forEach(reg => reg.unregister())).finally(() => setTimeout(() => signOut(), 500))
   }
