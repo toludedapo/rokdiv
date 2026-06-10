@@ -105,6 +105,7 @@ export default function App() {
     await supabase.from('sales').delete().eq('user_id', user.id)
     await supabase.from('collections').delete().eq('user_id', user.id)
     showToast('All data cleared')
+    setTimeout(() => window.location.reload(), 1000)
   }
 
   async function handleReturnCrates(saleId, newReturnedCount) {
