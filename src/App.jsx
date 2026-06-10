@@ -93,7 +93,7 @@ export default function App() {
   }
 
   async function handleMarkPaid(saleId) {
-    const { error } = await markPaid(saleId)
+    const { error } = await updateSale(saleId, { paid_at: new Date().toISOString().slice(0,10) })
     if (!error) showToast('Marked as paid ✓')
     else showToast('Could not update')
   }

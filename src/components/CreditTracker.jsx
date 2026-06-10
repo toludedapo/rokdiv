@@ -23,7 +23,7 @@ export default function CreditTracker({
   const [returning, setReturning]             = useState(false)
 
   const debtors = useMemo(() => {
-    const creditSales = sales.filter(s => s.payment_type === 'credit' && !s.paid)
+    const creditSales = sales.filter(s => s.payment_status === 'Credit' && !s.paid_at)
     const map = {}
     creditSales.forEach(s => {
       const name = s.customer_name || 'Unknown'

@@ -63,7 +63,7 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
 
   // ── Outstanding credit ──────────────────────────────────────────────────────
   const outstanding = useMemo(
-    () => sales.filter(s => s.payment_type === 'credit' && !s.paid)
+    () => sales.filter(s => s.payment_status === 'Credit' && !s.paid_at)
                .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0),
     [sales]
   )
@@ -156,7 +156,7 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
           </p>
           <p style={cardSub}>
             {outstanding > 0
-              ? `${sales.filter(s => s.payment_type === 'credit' && !s.paid).length} debtor${sales.filter(s => s.payment_type === 'credit' && !s.paid).length !== 1 ? 's' : ''}`
+              ? `${sales.filter(s => s.payment_status === 'Credit' && !s.paid_at).length} debtor${sales.filter(s => s.payment_status === 'Credit' && !s.paid_at).length !== 1 ? 's' : ''}`
               : 'No unpaid credit'}
           </p>
         </div>
