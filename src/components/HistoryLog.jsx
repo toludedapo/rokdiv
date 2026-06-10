@@ -80,12 +80,64 @@ export default function HistoryLog({ sales, collections, onClearAll, showToast, 
 
       {/* Danger zone - admin only */}
       {isAdmin && (
-        <div style={{ ...card, padding:'16px 18px', border:'1.5px solid #FECACA', boxShadow:'none' }}>
-          <p style={{ fontSize:12, fontWeight:700, color:'#DC2626', marginBottom:4 }}>Danger Zone</p>
-          <p style={{ fontSize:11, color:'#9CA3AF', marginBottom:12 }}>Export your data before clearing.</p>
-          <button onClick={()=>{ if(window.confirm('Delete ALL records permanently?')) onClearAll() }} className="btn-danger">
-            Clear All Data
-          </button>
+        <DangerZone onClearAll={onClearAll} />
+      )}
+    </div>
+  )
+}
+
+function DangerZone({ onClearAll }) {
+  const [confirming, setConfirming] = useState(false)
+  const [clearing,   setClearing]   = useState(false)
+
+  async function handleClear() {
+    setClearing(true)
+    await onClearAll()
+    setClearing(false)
+    setConfirming(false)
+  }
+
+  const card = {
+    background: '#FFFFFF', borderRadius: 16,
+    boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+    border: '1.5px solid #FECACA', overflow: 'hidden'
+  }
+
+  return (
+    <div style={{ ...card, padding: '16px 18px' }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: '#DC2626', marginBottom: 4 }}>Danger Zone</p>
+      <p style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 12 }}>Export your data before clearing. This cannot be undone.</p>
+
+      {!confirming ? (
+        <button onClick={() => setConfirming(true)} className="btn-danger">
+          Clear All Data
+        </button>
+      ) : (
+        <div style={{ background: '#FEF2F2', borderRadius: 10, padding: '14px', border: '1px solid #FECACA' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', margin: '0 0 8px' }}>
+            Are you sure? This will permanently delete all sales, collections, expenses and payments.
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={handleClear}
+              disabled={clearing}
+              style={{
+                flex: 1, padding: '10px', borderRadius: 10, background: '#DC2626',
+                color: 'white', border: 'none', fontWeight: 700, fontSize: 13,
+                cursor: clearing ? 'not-allowed' : 'pointer', opacity: clearing ? 0.7 : 1
+              }}>
+              {clearing ? 'Clearing...' : 'Yes, Delete Everything'}
+            </button>
+            <button
+              onClick={() => setConfirming(false)}
+              style={{
+                padding: '10px 16px', borderRadius: 10, background: 'white',
+                color: '#6B7280', border: '1px solid #E5E7EB', fontWeight: 600,
+                fontSize: 13, cursor: 'pointer'
+              }}>
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>
