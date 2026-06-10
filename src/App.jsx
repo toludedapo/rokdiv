@@ -15,6 +15,7 @@ import HistoryLog      from './components/HistoryLog'
 import ExpenseTracker  from './components/ExpenseTracker'
 import UserManager     from './components/UserManager'
 import Toast              from './components/Toast'
+import ChangePassword     from './components/ChangePassword'
 import CrateInventoryCard from './components/CrateInventoryCard'
 
 const ADMIN_EMAIL = 'dadimula1@gmail.com'
@@ -43,6 +44,7 @@ export default function App() {
   const [toast, setToast]           = useState(null)
   const [isOnline, setIsOnline]     = useState(navigator.onLine)
   const [offlineCount, setOfflineCount] = useState(0)
+  const [showChangePw, setShowChangePw]   = useState(false)
 
   // True only for the admin account
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
@@ -160,6 +162,14 @@ export default function App() {
               {isAdmin ? 'ADMIN' : 'STAFF'}
             </span>
 
+            {!isAdmin && (
+              <button onClick={() => setShowChangePw(true)} title="Set password"
+                style={{ background: '#F3F4F6', border: 'none', borderRadius: '8px',
+                  padding: '7px 10px', cursor: 'pointer', color: '#6B7280',
+                  display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}>
+                🔑 Set Password
+              </button>
+            )}
             {!isOnline && (
               <span style={{
                 background:'#FEF3C7', color:'#92400E', fontSize:'11px',
@@ -268,6 +278,7 @@ export default function App() {
         })}
       </nav>
 
+      {showChangePw && <ChangePassword onClose={() => setShowChangePw(false)} />}
       {toast && <Toast message={toast.message} onDone={() => setToast(null)} />}
     </div>
   )
