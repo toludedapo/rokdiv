@@ -10,7 +10,7 @@ function agingLabel(sale) {
 }
 
 export default function CreditTracker({
-  sales, onMarkPaid, payments = [], onAddPayment, onDeletePayment, isAdmin
+  sales, onMarkPaid, payments = [], onAddPayment, onDeletePayment, onReturnCrates, isAdmin
 }) {
   const [expandedCustomer, setExpandedCustomer] = useState(null)
   const [partialCustomer, setPartialCustomer]   = useState(null)
@@ -18,6 +18,9 @@ export default function CreditTracker({
   const [saving, setSaving]       = useState(false)
   const [markingPaid, setMarkingPaid] = useState(null)
   const [deletingPayment, setDeletingPayment] = useState(null)
+  const [returningSaleId, setReturningSaleId] = useState(null)
+  const [returnQty, setReturnQty]             = useState('')
+  const [returning, setReturning]             = useState(false)
 
   const debtors = useMemo(() => {
     const creditSales = sales.filter(s => s.payment_type === 'credit' && !s.paid)
@@ -86,6 +89,18 @@ export default function CreditTracker({
     setDeletingPayment(paymentId)
     await onDeletePayment(paymentId)
     setDeletingPayment(null)
+  }
+
+  async function handleCrateReturn(sale) {
+    const qty = parseInt(returnQty)
+    const outstanding = parseInt(sale.crates_loaned || 0) - parseInt(sale.crates_returned || 0)
+    if (!qty || qty < 1)     return
+    if (qty > outstanding)   return
+    setReturning(true)
+    await onReturnCrates(sale.id, (parseInt(sale.crates_returned) || 0) + qty)
+    setReturningSaleId(null)
+    setReturnQty('')
+    setReturning(false)
   }
 
   function buildWhatsApp(debtor) {
@@ -309,7 +324,47 @@ export default function CreditTracker({
                           {salePaid > 0 && (
                             <span style={{ color: '#10B981', marginLeft: '6px' }}>· {fmt(salePaid)} paid</span>
                           )}
+                          {parseInt(sale.crates_loaned || 0) > 0 && (
+                            <span style={{ color: '#D97706', marginLeft: '6px' }}>
+                              · 📦 {parseInt(sale.crates_loaned) - parseInt(sale.crates_returned || 0)} crates out
+                            </span>
+                          )}
                         </p>
+                        {/* Crate return inline form */}
+                        {parseInt(sale.crates_loaned || 0) - parseInt(sale.crates_returned || 0) > 0 && (
+                          <div style={{ marginTop: '6px' }}>
+                            {returningSaleId === sale.id ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <input
+                                  type="number" inputMode="numeric"
+                                  placeholder={`Max ${parseInt(sale.crates_loaned) - parseInt(sale.crates_returned || 0)}`}
+                                  value={returnQty}
+                                  onChange={e => setReturnQty(e.target.value)}
+                                  style={{ width: 80, padding: '4px 8px', borderRadius: '7px',
+                                    border: '1.5px solid #4F6EF7', fontSize: '12px', outline: 'none' }}
+                                  autoFocus
+                                />
+                                <button onClick={() => handleCrateReturn(sale)} disabled={returning}
+                                  style={{ padding: '4px 10px', borderRadius: '7px', background: '#4F6EF7',
+                                    color: 'white', border: 'none', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                                  {returning ? '...' : 'Confirm'}
+                                </button>
+                                <button onClick={() => { setReturningSaleId(null); setReturnQty('') }}
+                                  style={{ padding: '4px 8px', borderRadius: '7px', background: '#F3F4F6',
+                                    color: '#6B7280', border: 'none', fontSize: '11px', cursor: 'pointer' }}>
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button onClick={() => { setReturningSaleId(sale.id); setReturnQty('') }}
+                                style={{ fontSize: '11px', color: '#D97706', fontWeight: 700,
+                                  textDecoration: 'underline', textUnderlineOffset: '3px',
+                                  background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                📦 Record Crate Return
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '14px', fontWeight: 700, color: saleBalance > 0 ? '#EF4444' : '#10B981' }}>

@@ -229,6 +229,7 @@ export default function App() {
             payments={payments}
             onAddPayment={handleAddPayment}
             onDeletePayment={handleDeletePayment}
+            onReturnCrates={handleReturnCrates}
             isAdmin={isAdmin}
           />
         )}
