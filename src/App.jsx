@@ -245,72 +245,77 @@ export default function App() {
       background:'white', borderBottom:'1px solid #F3F4F6',
       position:'sticky', top:0, zIndex:50,
       boxShadow:'0 1px 6px rgba(0,0,0,0.06)',
-      display:'grid', gridTemplateColumns:'1fr auto 1fr',
-      alignItems:'center', padding:'0 32px', height:'60px'
     }}>
-      {/* Left - Logo */}
-      <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-        <span style={{ fontSize:'22px' }}>🥚</span>
-        <div>
-          <h1 style={{ margin:0, fontSize:'17px', fontWeight:800, color:'#111827', letterSpacing:'-0.02em' }}>ROKDIV</h1>
-          <p style={{ margin:0, fontSize:'11px', color:'#9CA3AF' }}>Farm Tracker</p>
+      {/* Row 1: Logo + Actions */}
+      <div style={{
+        display:'flex', alignItems:'center', justifyContent:'space-between',
+        padding:'12px 32px', borderBottom:'1px solid #F3F4F6'
+      }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+          <span style={{ fontSize:'22px' }}>🥚</span>
+          <div>
+            <h1 style={{ margin:0, fontSize:'17px', fontWeight:800, color:'#111827', letterSpacing:'-0.02em' }}>ROKDIV</h1>
+            <p style={{ margin:0, fontSize:'11px', color:'#9CA3AF' }}>Farm Tracker</p>
+          </div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+          <span style={{
+            background: isAdmin ? '#EEF1FF' : '#F0FDF4',
+            color:      isAdmin ? '#4F6EF7' : '#16A34A',
+            fontSize:'10px', fontWeight:700, padding:'3px 8px',
+            borderRadius:'20px', letterSpacing:'0.04em',
+            border:`1px solid ${isAdmin ? '#C7D2FE' : '#BBF7D0'}`
+          }}>
+            {isAdmin ? 'ADMIN' : 'STAFF'}
+          </span>
+          {!isAdmin && (
+            <button onClick={() => setShowChangePw(true)}
+              style={{ background:'#F3F4F6', border:'none', borderRadius:'8px',
+                padding:'7px 10px', cursor:'pointer', color:'#6B7280',
+                display:'flex', alignItems:'center', gap:'4px', fontSize:'12px', fontWeight:600 }}>
+              🔑 Set Password
+            </button>
+          )}
+          {!isOnline && (
+            <span style={{
+              background:'#FEF3C7', color:'#92400E', fontSize:'11px',
+              fontWeight:600, padding:'3px 8px', borderRadius:'20px',
+              border:'1px solid #FDE68A'
+            }}>
+              Offline{offlineCount > 0 ? ` · ${offlineCount} queued` : ''}
+            </span>
+          )}
+          <button onClick={signOut} style={{
+            background:'#FEE2E2', border:'none', borderRadius:'8px',
+            padding:'7px 12px', cursor:'pointer', fontSize:'12px',
+            fontWeight:600, color:'#DC2626', display:'flex', alignItems:'center', gap:'4px'
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Logout
+          </button>
         </div>
       </div>
-      {/* Center - Nav */}
-      <nav style={{ display:'flex', gap:'2px' }}>
-        {allTabs.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-            padding:'7px 14px', borderRadius:'10px', border:'none',
-            background: activeTab === tab.id ? '#EEF1FF' : 'transparent',
-            color: activeTab === tab.id ? '#4F6EF7' : '#6B7280',
-            fontWeight: activeTab === tab.id ? 700 : 500,
-            fontSize:'13px', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px',
-            transition:'all 0.15s', whiteSpace:'nowrap'
-          }}>
-            <span>{tab.icon}</span> {tab.label}
-          </button>
-        ))}
-      </nav>
-      {/* Right - Actions */}
-      <div style={{ display:'flex', alignItems:'center', gap:'8px', justifyContent:'flex-end' }}>
-        <span style={{
-          background: isAdmin ? '#EEF1FF' : '#F0FDF4',
-          color:      isAdmin ? '#4F6EF7' : '#16A34A',
-          fontSize:'10px', fontWeight:700, padding:'3px 8px',
-          borderRadius:'20px', letterSpacing:'0.04em',
-          border:`1px solid ${isAdmin ? '#C7D2FE' : '#BBF7D0'}`
-        }}>
-          {isAdmin ? 'ADMIN' : 'STAFF'}
-        </span>
-        {!isAdmin && (
-          <button onClick={() => setShowChangePw(true)}
-            style={{ background:'#F3F4F6', border:'none', borderRadius:'8px',
-              padding:'7px 10px', cursor:'pointer', color:'#6B7280',
-              display:'flex', alignItems:'center', gap:'4px', fontSize:'12px', fontWeight:600 }}>
-            🔑 Set Password
-          </button>
-        )}
-        {!isOnline && (
-          <span style={{
-            background:'#FEF3C7', color:'#92400E', fontSize:'11px',
-            fontWeight:600, padding:'3px 8px', borderRadius:'20px',
-            border:'1px solid #FDE68A'
-          }}>
-            Offline{offlineCount > 0 ? ` · ${offlineCount} queued` : ''}
-          </span>
-        )}
-        <button onClick={signOut} style={{
-          background:'#FEE2E2', border:'none', borderRadius:'8px',
-          padding:'7px 12px', cursor:'pointer', fontSize:'12px',
-          fontWeight:600, color:'#DC2626', display:'flex', alignItems:'center', gap:'4px'
-        }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-          Logout
-        </button>
+      {/* Row 2: Nav - aligned with content area */}
+      <div style={{ maxWidth:'1280px', margin:'0 auto', padding:'0 32px' }}>
+        <nav style={{ display:'flex', gap:'2px' }}>
+          {allTabs.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+              padding:'10px 16px', borderRadius:'0', border:'none',
+              borderBottom: activeTab === tab.id ? '2.5px solid #4F6EF7' : '2.5px solid transparent',
+              background: 'transparent',
+              color: activeTab === tab.id ? '#4F6EF7' : '#6B7280',
+              fontWeight: activeTab === tab.id ? 700 : 500,
+              fontSize:'13px', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px',
+              transition:'all 0.15s', whiteSpace:'nowrap', marginBottom:'-1px'
+            }}>
+              <span>{tab.icon}</span> {tab.label}
+            </button>
+          ))}
+        </nav>
       </div>
     </div>
   ) : (
