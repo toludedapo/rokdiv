@@ -3,34 +3,41 @@ import { useMemo } from 'react'
 const NAIRA = String.fromCharCode(0x20A6)
 const fmt = (n) => NAIRA + Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0 })
 
+// Helper - works with both {crates, singles} and {crates, loose_eggs} schemas
+function eggsFromRecord(r) {
+  return (parseInt(r.crates || 0) * 30) + parseInt(r.singles || r.loose_eggs || 0)
+}
+
 export default function SummaryCards({ collections, sales, expenses = [] }) {
   const now = new Date()
 
-  // ── Run-rate: last 7 days of sales (by egg count, all sale types) ───────────
+  // ── Run-rate: last 7 days of sales ─────────────────────────────────────────
   const runRate = useMemo(() => {
     const cutoff = new Date(now)
     cutoff.setDate(cutoff.getDate() - 7)
     const recent = sales.filter(s => new Date(s.date) >= cutoff)
     if (recent.length === 0) return null
-
-    // Unique days that had sales
-    const days = new Set(recent.map(s => s.date)).size
-    const totalEggs = recent.reduce((sum, s) => sum + (parseInt(s.crates || 0) * 30), 0)
-    return days >= 1 ? totalEggs / 7 : null   // daily average over full 7-day window
+    const totalEggs = recent.reduce((sum, s) => sum + eggsFromRecord(s), 0)
+    return totalEggs / 7
   }, [sales])
 
   // ── Inventory ───────────────────────────────────────────────────────────────
   const totalCollected = useMemo(
-    () => collections.reduce((s, c) => s + (parseInt(c.crates || 0) * 30 + parseInt(c.loose_eggs || 0)), 0),
+    () => collections.reduce((s, c) => s + eggsFromRecord(c), 0),
     [collections]
   )
-  const totalSold = useMemo(
-    () => sales.reduce((s, sale) => s + (parseInt(sale.crates || 0) * 30), 0),
+  const totalSoldEggs = useMemo(
+    () => sales.reduce((s, sale) => s + eggsFromRecord(sale), 0),
     [sales]
   )
-  const inStockEggs = Math.max(0, totalCollected - totalSold)
+  const totalSoldCrates = useMemo(
+    () => sales.reduce((s, sale) => s + parseInt(sale.crates || 0), 0),
+    [sales]
+  )
+  const inStockEggs = Math.max(0, totalCollected - totalSoldEggs)
   const inStockCrates = Math.floor(inStockEggs / 30)
-  const LOW_STOCK_THRESHOLD = 1500  // 50 crates
+  const inStockSingles = inStockEggs % 30
+  const LOW_STOCK_THRESHOLD = 1500
   const isLowStock = inStockEggs > 0 && inStockEggs < LOW_STOCK_THRESHOLD
 
   let daysLeft = null
@@ -39,14 +46,15 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
   }
 
   // ── Revenue (this month) ────────────────────────────────────────────────────
-  const monthRevenue = useMemo(() => {
-    return sales
-      .filter(s => {
-        const d = new Date(s.date)
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-      })
-      .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0)
-  }, [sales])
+  const thisMonthSales = useMemo(() => sales.filter(s => {
+    const d = new Date(s.date)
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+  }), [sales])
+
+  const monthRevenue = useMemo(
+    () => thisMonthSales.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0),
+    [thisMonthSales]
+  )
 
   // ── Expenses (this month) ───────────────────────────────────────────────────
   const monthExpenses = useMemo(() => {
@@ -62,10 +70,13 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
   const hasExpenseData = monthExpenses > 0
 
   // ── Outstanding credit ──────────────────────────────────────────────────────
-  const outstanding = useMemo(
-    () => sales.filter(s => s.payment_status === 'Credit' && !s.paid_at)
-               .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0),
+  const creditSales = useMemo(
+    () => sales.filter(s => s.payment_status === 'Credit' && !s.paid_at),
     [sales]
+  )
+  const outstanding = useMemo(
+    () => creditSales.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0),
+    [creditSales]
   )
 
   // ── Collection streak ───────────────────────────────────────────────────────
@@ -83,6 +94,16 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
       else break
     }
     return count
+  }, [collections])
+
+  // ── This month collections ──────────────────────────────────────────────────
+  const monthCollectedCrates = useMemo(() => {
+    return collections
+      .filter(c => {
+        const d = new Date(c.date)
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+      })
+      .reduce((s, c) => s + parseInt(c.crates || 0), 0)
   }, [collections])
 
   return (
@@ -109,31 +130,19 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
 
         {/* In Stock */}
-        <div style={{
-          ...cardBase,
-          ...(isLowStock ? lowStockStyle : {})
-        }}>
+        <div style={{ ...cardBase, ...(isLowStock ? lowStockStyle : {}) }}>
           <p style={cardLabel}>In Stock</p>
           <p style={{ ...cardValue, color: isLowStock ? '#EF4444' : '#4F6EF7' }}>
             {inStockCrates.toLocaleString()}
             <span style={{ fontSize: '12px', fontWeight: 500, color: '#9CA3AF', marginLeft: '3px' }}>crates</span>
           </p>
-          <p style={cardSub}>
-            {inStockEggs.toLocaleString()} eggs
-          </p>
+          <p style={cardSub}>{inStockEggs.toLocaleString()} eggs{inStockSingles > 0 ? ` (+${inStockSingles})` : ''}</p>
           {isLowStock && (
-            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#EF4444', fontWeight: 600 }}>
-              ⚠ Low stock
-            </p>
+            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#EF4444', fontWeight: 600 }}>⚠ Low stock</p>
           )}
           {daysLeft !== null && !isLowStock && (
             <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6B7280' }}>
               ~{daysLeft} day{daysLeft !== 1 ? 's' : ''} left at current rate
-            </p>
-          )}
-          {runRate === null && (
-            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9CA3AF' }}>
-              No recent sales run-rate
             </p>
           )}
         </div>
@@ -142,10 +151,7 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
         <div style={cardBase}>
           <p style={cardLabel}>Revenue (this month)</p>
           <p style={{ ...cardValue, color: '#10B981' }}>{fmt(monthRevenue)}</p>
-          <p style={cardSub}>from {sales.filter(s => {
-            const d = new Date(s.date)
-            return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-          }).length} sale{sales.length !== 1 ? 's' : ''}</p>
+          <p style={cardSub}>from {thisMonthSales.length} sale{thisMonthSales.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* Outstanding */}
@@ -156,12 +162,12 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
           </p>
           <p style={cardSub}>
             {outstanding > 0
-              ? `${sales.filter(s => s.payment_status === 'Credit' && !s.paid_at).length} debtor${sales.filter(s => s.payment_status === 'Credit' && !s.paid_at).length !== 1 ? 's' : ''}`
+              ? `${creditSales.length} debtor${creditSales.length !== 1 ? 's' : ''}`
               : 'No unpaid credit'}
           </p>
         </div>
 
-        {/* Net Profit or Total Collected */}
+        {/* Net Profit / Collected / Crates Sold */}
         {hasExpenseData ? (
           <div style={cardBase}>
             <p style={cardLabel}>{netProfit >= 0 ? 'Net Profit' : 'Net Loss'} (month)</p>
@@ -174,15 +180,30 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
           <div style={cardBase}>
             <p style={cardLabel}>Collected (month)</p>
             <p style={{ ...cardValue, color: '#4F6EF7' }}>
-              {collections.filter(c => {
-                const d = new Date(c.date)
-                return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-              }).reduce((s, c) => s + parseInt(c.crates || 0), 0).toLocaleString()}
+              {monthCollectedCrates.toLocaleString()}
               <span style={{ fontSize: '12px', fontWeight: 500, color: '#9CA3AF', marginLeft: '3px' }}>crates</span>
             </p>
             <p style={cardSub}>Log expenses to see profit</p>
           </div>
         )}
+      </div>
+
+      {/* Crates Sold card - full width */}
+      <div style={{ ...cardBase, marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <p style={cardLabel}>Total Crates Sold</p>
+          <p style={{ ...cardValue, color: '#8B5CF6', margin: 0 }}>
+            {totalSoldCrates.toLocaleString()}
+            <span style={{ fontSize: '12px', fontWeight: 500, color: '#9CA3AF', marginLeft: '3px' }}>crates</span>
+          </p>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ ...cardLabel, margin: '0 0 4px' }}>This Month</p>
+          <p style={{ ...cardValue, fontSize: '16px', color: '#8B5CF6', margin: 0 }}>
+            {thisMonthSales.reduce((s, sale) => s + parseInt(sale.crates || 0), 0).toLocaleString()}
+            <span style={{ fontSize: '11px', fontWeight: 500, color: '#9CA3AF', marginLeft: '3px' }}>crates</span>
+          </p>
+        </div>
       </div>
 
       {/* Quick Actions */}

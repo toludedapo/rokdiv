@@ -1,10 +1,12 @@
 /**
- * useCloudData — replaces useLocalStorage for all three tables.
- * Fetches on mount, subscribes to real-time changes, and exposes
+ * useCloudData — fetches on mount, subscribes to real-time changes, and exposes
  * add/update/delete helpers that write directly to Supabase.
+ * All data is shared across the farm (uses ADMIN_USER_ID for reads).
  */
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+
+const ADMIN_USER_ID = '8592c29c-2d26-4832-93e7-14d264c91631'
 
 // ─── Sales ──────────────────────────────────────────────────────────────────
 export function useSales(userId) {
@@ -16,7 +18,7 @@ export function useSales(userId) {
     const { data } = await supabase
       .from('sales')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', ADMIN_USER_ID)
       .order('date', { ascending: false })
     setSales(data ?? [])
     setLoading(false)
@@ -26,9 +28,9 @@ export function useSales(userId) {
     fetch()
     if (!userId) return
     const channel = supabase
-      .channel(`sales:${userId}`)
+      .channel(`sales:${ADMIN_USER_ID}`)
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'sales', filter: `user_id=eq.${userId}` },
+        { event: '*', schema: 'public', table: 'sales', filter: `user_id=eq.${ADMIN_USER_ID}` },
         () => fetch()
       )
       .subscribe()
@@ -38,7 +40,7 @@ export function useSales(userId) {
   const addSale = async (sale) => {
     const { data, error } = await supabase
       .from('sales')
-      .insert({ ...sale, user_id: userId })
+      .insert({ ...sale, user_id: ADMIN_USER_ID })
       .select()
       .maybeSingle()
     if (!error && data) setSales(prev => [data, ...prev])
@@ -47,12 +49,12 @@ export function useSales(userId) {
 
   const updateSale = async (id, updates) => {
     setSales(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
-    const { error } = await supabase.from('sales').update(updates).eq('id', id).eq('user_id', userId)
+    const { error } = await supabase.from('sales').update(updates).eq('id', id).eq('user_id', ADMIN_USER_ID)
     return { error }
   }
 
   const deleteSale = async (id) => {
-    const { error } = await supabase.from('sales').delete().eq('id', id).eq('user_id', userId)
+    const { error } = await supabase.from('sales').delete().eq('id', id).eq('user_id', ADMIN_USER_ID)
     return { error }
   }
 
@@ -74,7 +76,7 @@ export function useCollections(userId) {
     const { data } = await supabase
       .from('collections')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', ADMIN_USER_ID)
       .order('date', { ascending: false })
     setCollections(data ?? [])
     setLoading(false)
@@ -84,9 +86,9 @@ export function useCollections(userId) {
     fetch()
     if (!userId) return
     const channel = supabase
-      .channel(`collections:${userId}`)
+      .channel(`collections:${ADMIN_USER_ID}`)
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'collections', filter: `user_id=eq.${userId}` },
+        { event: '*', schema: 'public', table: 'collections', filter: `user_id=eq.${ADMIN_USER_ID}` },
         () => fetch()
       )
       .subscribe()
@@ -96,7 +98,7 @@ export function useCollections(userId) {
   const addCollection = async (col) => {
     const { data, error } = await supabase
       .from('collections')
-      .insert({ ...col, user_id: userId })
+      .insert({ ...col, user_id: ADMIN_USER_ID })
       .select()
       .maybeSingle()
     if (!error && data) setCollections(prev => [data, ...prev])
@@ -104,7 +106,7 @@ export function useCollections(userId) {
   }
 
   const deleteCollection = async (id) => {
-    const { error } = await supabase.from('collections').delete().eq('id', id).eq('user_id', userId)
+    const { error } = await supabase.from('collections').delete().eq('id', id).eq('user_id', ADMIN_USER_ID)
     return { error }
   }
 
@@ -121,7 +123,7 @@ export function useCrateInventory(userId) {
     const { data } = await supabase
       .from('crate_inventory')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', ADMIN_USER_ID)
       .maybeSingle()
     setInventory(data ?? { total_owned: 0 })
     setLoading(false)
@@ -131,9 +133,9 @@ export function useCrateInventory(userId) {
     fetch()
     if (!userId) return
     const channel = supabase
-      .channel(`crate_inventory:${userId}`)
+      .channel(`crate_inventory:${ADMIN_USER_ID}`)
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'crate_inventory', filter: `user_id=eq.${userId}` },
+        { event: '*', schema: 'public', table: 'crate_inventory', filter: `user_id=eq.${ADMIN_USER_ID}` },
         () => fetch()
       )
       .subscribe()
@@ -143,7 +145,7 @@ export function useCrateInventory(userId) {
   const setTotalOwned = async (total_owned) => {
     const { error } = await supabase
       .from('crate_inventory')
-      .upsert({ user_id: userId, total_owned, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+      .upsert({ user_id: ADMIN_USER_ID, total_owned, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
     return { error }
   }
 
