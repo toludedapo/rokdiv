@@ -8,7 +8,7 @@ function eggsFromRecord(r) {
   return (parseInt(r.crates || 0) * 30) + parseInt(r.singles || r.loose_eggs || 0)
 }
 
-export default function SummaryCards({ collections, sales, expenses = [], payments = [] }) {
+export default function SummaryCards({ collections, sales, expenses = [], payments = [], isDesktop = false }) {
   const now = new Date()
 
   // ── Run-rate: last 7 days of sales ─────────────────────────────────────────
@@ -229,6 +229,38 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
           <span style={{ fontSize: '13px', fontWeight: 700 }}>Record Sale</span>
         </button>
       </div>
+
+      {/* Recent Sales - desktop only */}
+      {isDesktop && sales.length > 0 && (
+        <div style={{ ...cardBase, marginTop: '16px' }}>
+          <p style={cardLabel}>Recent Sales</p>
+          {[...sales].slice(0, 5).map((s, i) => (
+            <div key={s.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '10px 0',
+              borderBottom: i < Math.min(sales.length, 5) - 1 ? '1px solid #F3F4F6' : 'none'
+            }}>
+              <div>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#111827' }}>{s.customer_name}</p>
+                <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#9CA3AF' }}>
+                  {new Date(s.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                  {' · '}{parseInt(s.crates || 0)} crate{parseInt(s.crates || 0) !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#10B981' }}>
+                  {String.fromCharCode(0x20A6)}{Number(s.amount).toLocaleString('en-NG')}
+                </p>
+                <span style={{
+                  fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '99px',
+                  background: s.payment_status === 'Paid' ? '#ECFDF5' : '#FFFBEB',
+                  color: s.payment_status === 'Paid' ? '#059669' : '#D97706'
+                }}>{s.payment_status}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

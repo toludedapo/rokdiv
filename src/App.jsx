@@ -323,9 +323,9 @@ export default function App() {
         <div style={{ maxWidth:'1280px', margin:'0 auto', padding:'24px 32px' }}>
           {activeTab === 'dashboard' ? (
             // Dashboard: 3-column grid on desktop
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'20px', alignItems:'start' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'24px', alignItems:'start' }}>
               <div style={{ gridColumn:'1 / 3' }}>
-                <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} />
+                <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} isDesktop={true} />
               </div>
               <div>
                 <CrateInventoryCard
