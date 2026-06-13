@@ -242,6 +242,7 @@ export default function App() {
   // ── Header (shared) ─────────────────────────────────────────────────
   const header = (
     <div style={{
+      position: 'relative',
       background:'white',
       padding: isDesktop ? '14px 32px' : '14px 16px 10px',
       borderBottom:'1px solid #F3F4F6',
@@ -258,7 +259,10 @@ export default function App() {
       </div>
       <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
         {isDesktop && (
-          <nav style={{ display:'flex', gap:'4px', marginRight:'16px' }}>
+          <nav style={{ 
+            position:'absolute', left:'50%', transform:'translateX(-50%)',
+            display:'flex', gap:'4px'
+          }}>
             {allTabs.map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
                 padding:'7px 14px', borderRadius:'10px', border:'none',
