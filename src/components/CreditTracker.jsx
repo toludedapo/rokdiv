@@ -34,19 +34,21 @@ export default function CreditTracker({
     const creditSales = sales.filter(s => s.payment_status === 'Credit' && !s.paid_at)
     const map = {}
     creditSales.forEach(s => {
-      const alreadyPaid = paidBySaleMap[s.id] || 0
-      const remaining = Math.max(0, parseFloat(s.amount || 0) - alreadyPaid)
-      if (remaining <= 0) return // skip fully paid
       const name = s.customer_name || 'Unknown'
       if (!map[name]) map[name] = { name, sales: [], total: 0, oldest: s.date }
       map[name].sales.push(s)
-      map[name].total += remaining
+      map[name].total += parseFloat(s.amount || 0)
       if (s.date < map[name].oldest) map[name].oldest = s.date
     })
     return Object.values(map).sort((a, b) => new Date(a.oldest) - new Date(b.oldest))
-  }, [sales, paidBySaleMap])
+  }, [sales])
 
-  const totalOutstanding = debtors.reduce((s, d) => s + d.total, 0)
+  const totalOutstanding = useMemo(() => {
+    return debtors.reduce((sum, d) => {
+      const totalPaid = d.sales.reduce((s, sale) => s + (paidBySaleMap[sale.id] || 0), 0)
+      return sum + Math.max(0, d.total - totalPaid)
+    }, 0)
+  }, [debtors, paidBySaleMap])
 
   // All customers with outstanding crates (regardless of payment status)
   const cratesOutCustomers = useMemo(() => {
