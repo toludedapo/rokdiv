@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
+const ADMIN_USER_ID = '8592c29c-2d26-4832-93e7-14d264c91631'
+
 export function usePayments(userId) {
   const [payments, setPayments] = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -12,7 +14,7 @@ export function usePayments(userId) {
     supabase
       .from('payments')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', ADMIN_USER_ID)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (!error && data) setPayments(data)
@@ -20,14 +22,14 @@ export function usePayments(userId) {
       })
 
     const channel = supabase
-      .channel(`payments:${userId}`)
+      .channel(`payments:${ADMIN_USER_ID}`)
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'payments', filter: `user_id=eq.${userId}` },
+        { event: '*', schema: 'public', table: 'payments', filter: `user_id=eq.${ADMIN_USER_ID}` },
         () => {
           supabase
             .from('payments')
             .select('*')
-            .eq('user_id', userId)
+            .eq('user_id', ADMIN_USER_ID)
             .order('created_at', { ascending: false })
             .then(({ data }) => { if (data) setPayments(data) })
         }
@@ -37,16 +39,15 @@ export function usePayments(userId) {
     return () => supabase.removeChannel(channel)
   }, [userId])
 
-  // FIX: return {error} instead of throwing so callers don't need try/catch
-  const addPayment = useCallback(async ({ sale_id, amount, date, notes, user_id }) => {
+  const addPayment = useCallback(async ({ sale_id, amount, date, notes }) => {
     const { data, error } = await supabase
       .from('payments')
-      .insert([{ user_id: user_id || userId, sale_id, amount, date, notes }])
+      .insert([{ user_id: ADMIN_USER_ID, sale_id, amount, date, notes }])
       .select()
       .maybeSingle()
     if (!error && data) setPayments(prev => [data, ...prev])
     return { data, error }
-  }, [userId])
+  }, [])
 
   const deletePayment = useCallback(async (id) => {
     const { error } = await supabase.from('payments').delete().eq('id', id)
