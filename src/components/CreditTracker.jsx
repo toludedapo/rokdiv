@@ -22,18 +22,29 @@ export default function CreditTracker({
   const [returnQty, setReturnQty]             = useState('')
   const [returning, setReturning]             = useState(false)
 
+  const paidBySaleMap = useMemo(() => {
+    const map = {}
+    payments.forEach(p => {
+      map[p.sale_id] = (map[p.sale_id] || 0) + parseFloat(p.amount || 0)
+    })
+    return map
+  }, [payments])
+
   const debtors = useMemo(() => {
     const creditSales = sales.filter(s => s.payment_status === 'Credit' && !s.paid_at)
     const map = {}
     creditSales.forEach(s => {
+      const alreadyPaid = paidBySaleMap[s.id] || 0
+      const remaining = Math.max(0, parseFloat(s.amount || 0) - alreadyPaid)
+      if (remaining <= 0) return // skip fully paid
       const name = s.customer_name || 'Unknown'
       if (!map[name]) map[name] = { name, sales: [], total: 0, oldest: s.date }
       map[name].sales.push(s)
-      map[name].total += parseFloat(s.amount || 0)
+      map[name].total += remaining
       if (s.date < map[name].oldest) map[name].oldest = s.date
     })
     return Object.values(map).sort((a, b) => new Date(a.oldest) - new Date(b.oldest))
-  }, [sales])
+  }, [sales, paidBySaleMap])
 
   const totalOutstanding = debtors.reduce((s, d) => s + d.total, 0)
 
