@@ -239,7 +239,7 @@ export default function App() {
 
         {activeTab === 'dashboard' && (
           <>
-            <SummaryCards collections={collections} sales={sales} expenses={expenses} />
+            <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} />
             <div style={{ marginTop:'12px' }}>
               <CrateInventoryCard
                 inventory={inventory}

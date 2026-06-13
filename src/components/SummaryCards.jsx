@@ -8,7 +8,7 @@ function eggsFromRecord(r) {
   return (parseInt(r.crates || 0) * 30) + parseInt(r.singles || r.loose_eggs || 0)
 }
 
-export default function SummaryCards({ collections, sales, expenses = [] }) {
+export default function SummaryCards({ collections, sales, expenses = [], payments = [] }) {
   const now = new Date()
 
   // ── Run-rate: last 7 days of sales ─────────────────────────────────────────
@@ -69,14 +69,24 @@ export default function SummaryCards({ collections, sales, expenses = [] }) {
   const netProfit = monthRevenue - monthExpenses
   const hasExpenseData = monthExpenses > 0
 
-  // ── Outstanding credit ──────────────────────────────────────────────────────
+  // ── Outstanding credit (deduct partial payments) ───────────────────────────
   const creditSales = useMemo(
     () => sales.filter(s => s.payment_status === 'Credit' && !s.paid_at),
     [sales]
   )
+  const paidBySale = useMemo(() => {
+    const map = {}
+    for (const p of payments) {
+      map[p.sale_id] = (map[p.sale_id] || 0) + parseFloat(p.amount || 0)
+    }
+    return map
+  }, [payments])
   const outstanding = useMemo(
-    () => creditSales.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0),
-    [creditSales]
+    () => creditSales.reduce((sum, s) => {
+      const alreadyPaid = paidBySale[s.id] || 0
+      return sum + Math.max(0, parseFloat(s.amount || 0) - alreadyPaid)
+    }, 0),
+    [creditSales, paidBySale]
   )
 
   // ── Collection streak ───────────────────────────────────────────────────────
