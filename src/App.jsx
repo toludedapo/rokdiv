@@ -48,7 +48,7 @@ export default function App() {
   const { payments, addPayment, deletePayment }           = usePayments(user?.id)
   const { expenses, addExpense, deleteExpense }           = useExpenses(user?.id)
 
-  const [activeTab,    setActiveTab]    = useState('dashboard')
+  const [activeTab,    setActiveTab]    = useState(() => localStorage.getItem('rokdiv_tab') || 'dashboard')
   const [toast,        setToast]        = useState(null)
   const [isOnline,     setIsOnline]     = useState(navigator.onLine)
   const [offlineCount, setOfflineCount] = useState(0)
@@ -60,6 +60,11 @@ export default function App() {
     ? [...NAV_TABS, { id: 'users', icon: '👥', label: 'Users' }]
     : NAV_TABS
 
+  function handleTabChange(tab) {
+    setActiveTab(tab)
+    localStorage.setItem('rokdiv_tab', tab)
+  }
+
   function showToast(msg) {
     setToast({ message: msg })
     setTimeout(() => setToast(null), 3000)
@@ -69,7 +74,7 @@ export default function App() {
   useWeeklySummary(sales, collections)
 
   useEffect(() => {
-    const handler = (e) => setActiveTab(e.detail)
+    const handler = (e) => handleTabChange(e.detail)
     window.addEventListener('rokdiv-nav', handler)
     return () => window.removeEventListener('rokdiv-nav', handler)
   }, [])
@@ -303,7 +308,7 @@ export default function App() {
       <div style={{ maxWidth:'1280px', margin:'0 auto', padding:'0 32px' }}>
         <nav style={{ display:'flex', gap:'2px' }}>
           {allTabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+            <button key={tab.id} onClick={() => handleTabChange(tab.id)} style={{
               padding:'10px 16px', borderRadius:'0', border:'none',
               borderBottom: activeTab === tab.id ? '2.5px solid #4F6EF7' : '2.5px solid transparent',
               background: 'transparent',
@@ -426,7 +431,7 @@ export default function App() {
         {allTabs.map(tab => {
           const active = activeTab === tab.id
           return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            <button key={tab.id} onClick={() => handleTabChange(tab.id)}
               style={{
                 flex:1, padding:'10px 4px 8px', background:'none', border:'none',
                 cursor:'pointer', display:'flex', flexDirection:'column',
