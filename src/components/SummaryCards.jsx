@@ -137,12 +137,12 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
       )}
 
       {/* Cards grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: isDesktop ? '14px' : '10px', marginBottom: isDesktop ? '14px' : '10px' }}>
 
         {/* In Stock */}
-        <div style={{ ...cardBase, ...(isLowStock ? lowStockStyle : {}) }}>
-          <p style={cardLabel}>In Stock</p>
-          <p style={{ ...cardValue, color: isLowStock ? '#EF4444' : '#4F6EF7' }}>
+        <div style={{ ...cardBase, ...(isLowStock ? lowStockStyle : {}), padding: isDesktop ? '22px' : '14px' }}>
+          <p style={{ ...cardLabel, fontSize: isDesktop ? '12px' : '11px' }}>In Stock</p>
+          <p style={{ ...cardValue, fontSize: isDesktop ? '32px' : '22px', color: isLowStock ? '#EF4444' : '#4F6EF7' }}>
             {inStockCrates.toLocaleString()}
             <span style={{ fontSize: '12px', fontWeight: 500, color: '#9CA3AF', marginLeft: '3px' }}>crates</span>
           </p>
@@ -158,19 +158,19 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
         </div>
 
         {/* Monthly Revenue */}
-        <div style={cardBase}>
-          <p style={cardLabel}>Revenue (this month)</p>
-          <p style={{ ...cardValue, color: '#10B981' }}>{fmt(monthRevenue)}</p>
-          <p style={cardSub}>from {thisMonthSales.length} sale{thisMonthSales.length !== 1 ? 's' : ''}</p>
+        <div style={{ ...cardBase, padding: isDesktop ? '22px' : '14px' }}>
+          <p style={{ ...cardLabel, fontSize: isDesktop ? '12px' : '11px' }}>Revenue (this month)</p>
+          <p style={{ ...cardValue, fontSize: isDesktop ? '32px' : '22px', color: '#10B981' }}>{fmt(monthRevenue)}</p>
+          <p style={{ ...cardSub, fontSize: isDesktop ? '13px' : '11px' }}>from {thisMonthSales.length} sale{thisMonthSales.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* Outstanding */}
-        <div style={cardBase}>
-          <p style={cardLabel}>Outstanding</p>
-          <p style={{ ...cardValue, color: outstanding > 0 ? '#F59E0B' : '#10B981' }}>
+        <div style={{ ...cardBase, padding: isDesktop ? '22px' : '14px' }}>
+          <p style={{ ...cardLabel, fontSize: isDesktop ? '12px' : '11px' }}>Outstanding</p>
+          <p style={{ ...cardValue, fontSize: isDesktop ? '32px' : '22px', color: outstanding > 0 ? '#F59E0B' : '#10B981' }}>
             {outstanding > 0 ? fmt(outstanding) : 'Clear'}
           </p>
-          <p style={cardSub}>
+          <p style={{ ...cardSub, fontSize: isDesktop ? '13px' : '11px' }}>
             {outstanding > 0
               ? `${creditSales.length} debtor${creditSales.length !== 1 ? 's' : ''}`
               : 'No unpaid credit'}
@@ -179,27 +179,27 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
 
         {/* Net Profit / Collected / Crates Sold */}
         {hasExpenseData ? (
-          <div style={cardBase}>
-            <p style={cardLabel}>{netProfit >= 0 ? 'Net Profit' : 'Net Loss'} (month)</p>
-            <p style={{ ...cardValue, color: netProfit >= 0 ? '#4F6EF7' : '#EF4444' }}>
+          <div style={{ ...cardBase, padding: isDesktop ? '22px' : '14px' }}>
+            <p style={{ ...cardLabel, fontSize: isDesktop ? '12px' : '11px' }}>{netProfit >= 0 ? 'Net Profit' : 'Net Loss'} (month)</p>
+            <p style={{ ...cardValue, fontSize: isDesktop ? '32px' : '22px', color: netProfit >= 0 ? '#4F6EF7' : '#EF4444' }}>
               {fmt(Math.abs(netProfit))}
             </p>
-            <p style={cardSub}>after {fmt(monthExpenses)} expenses</p>
+            <p style={{ ...cardSub, fontSize: isDesktop ? '13px' : '11px' }}>after {fmt(monthExpenses)} expenses</p>
           </div>
         ) : (
-          <div style={cardBase}>
-            <p style={cardLabel}>Collected (month)</p>
-            <p style={{ ...cardValue, color: '#4F6EF7' }}>
+          <div style={{ ...cardBase, padding: isDesktop ? '22px' : '14px' }}>
+            <p style={{ ...cardLabel, fontSize: isDesktop ? '12px' : '11px' }}>Collected (month)</p>
+            <p style={{ ...cardValue, fontSize: isDesktop ? '32px' : '22px', color: '#4F6EF7' }}>
               {monthCollectedCrates.toLocaleString()}
-              <span style={{ fontSize: '12px', fontWeight: 500, color: '#9CA3AF', marginLeft: '3px' }}>crates</span>
+              <span style={{ fontSize: isDesktop ? '14px' : '12px', fontWeight: 500, color: '#9CA3AF', marginLeft: '3px' }}>crates</span>
             </p>
-            <p style={cardSub}>Log expenses to see profit</p>
+            <p style={{ ...cardSub, fontSize: isDesktop ? '13px' : '11px' }}>Log expenses to see profit</p>
           </div>
         )}
       </div>
 
       {/* Crates Sold card - full width */}
-      <div style={{ ...cardBase, marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ ...cardBase, marginBottom: isDesktop ? '14px' : '10px', padding: isDesktop ? '22px' : '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p style={cardLabel}>Total Crates Sold</p>
           <p style={{ ...cardValue, color: '#8B5CF6', margin: 0 }}>
@@ -273,7 +273,7 @@ const qaBtn = (color, bg, border) => ({
 
 const cardBase = {
   background: 'white',
-  borderRadius: '14px',
+  borderRadius: '16px',
   padding: '14px',
   boxShadow: '0 1px 8px rgba(0,0,0,0.07)',
   border: '1px solid transparent',
