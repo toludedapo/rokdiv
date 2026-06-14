@@ -15,7 +15,14 @@ export default function CollectionForm({ collections, onSave, onDelete, onQueueO
     if (form.crates === '' && form.singles === '') return setError('Enter crates or singles.')
     setError('')
     setSaving(true)
-    const payload = { date: form.date, crates: Number(form.crates)||0, singles: Number(form.singles)||0, notes: form.notes.trim() }
+    const now = new Date()
+    const payload = {
+      date: form.date,
+      crates: Number(form.crates)||0,
+      singles: Number(form.singles)||0,
+      notes: form.notes.trim(),
+      collected_at: now.toISOString()
+    }
     try {
       await onSave(payload)
       setForm({ date: todayISO(), crates: '', singles: '', notes: '' })
@@ -31,6 +38,11 @@ export default function CollectionForm({ collections, onSave, onDelete, onQueueO
 
   const total  = (Number(form.crates)||0)*CRATE_SIZE + (Number(form.singles)||0)
   const sorted = [...collections].sort((a,b) => a.date < b.date ? 1 : -1)
+
+  function fmtTime(iso) {
+    if (!iso) return ''
+    return new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })
+  }
 
   return (
     <div className="mx-4" style={{ background: '#FFFFFF', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1.5px solid #F3F4F6', overflow: 'hidden' }}>
@@ -89,6 +101,9 @@ export default function CollectionForm({ collections, onSave, onDelete, onQueueO
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <p style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{fmtDate(c.date)}</p>
+                      {c.collected_at && (
+                        <span style={{ fontSize: 11, color: '#9CA3AF' }}>· {fmtTime(c.collected_at)}</span>
+                      )}
                       {c.isOffline && <span className="badge-offline">💾 Offline</span>}
                     </div>
                     <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{c.notes || `${c.crates} crates + ${c.singles} singles`}</p>

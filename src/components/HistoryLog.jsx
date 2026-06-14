@@ -4,11 +4,21 @@ import { History, Download } from 'lucide-react'
 import { fmtDate, fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
 import { exportSalesCSV, exportCollectionsCSV } from '../utils/exportUtils.js'
 
+function fmtTime(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })
+}
+
 export default function HistoryLog({ sales, collections, onClearAll, showToast, isAdmin }) {
   const [tab, setTab] = useState('sales')
   const sorted = tab === 'sales'
     ? [...sales].sort((a,b) => a.date < b.date ? 1 : -1)
-    : [...collections].sort((a,b) => a.date < b.date ? 1 : -1)
+    : [...collections].sort((a,b) => {
+        // Sort by collected_at if available, else by date
+        const aTime = a.collected_at || a.date
+        const bTime = b.collected_at || b.date
+        return aTime < bTime ? 1 : -1
+      })
 
   const card = { background:'#FFFFFF', borderRadius:16, boxShadow:'0 2px 12px rgba(0,0,0,0.07)', border:'1.5px solid #F3F4F6', overflow:'hidden' }
 
@@ -68,8 +78,16 @@ export default function HistoryLog({ sales, collections, onClearAll, showToast, 
             ) : (
               <div key={item.id} style={{ padding:'13px 18px', borderBottom:idx<sorted.length-1?'1px solid #F3F4F6':'none', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div>
-                  <p style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{fmtDate(item.date)}</p>
-                  <p style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{item.crates} crates + {item.singles} singles{item.notes?` · ${item.notes}`:''}</p>
+                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                    <p style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{fmtDate(item.date)}</p>
+                    {item.collected_at && (
+                      <span style={{ fontSize:11, color:'#9CA3AF' }}>· {fmtTime(item.collected_at)}</span>
+                    )}
+                  </div>
+                  <p style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>
+                    {item.crates} crates + {item.singles} singles
+                    {item.notes ? ` · ${item.notes}` : ''}
+                  </p>
                 </div>
                 <span className="num" style={{ fontSize:13, fontWeight:700, color:'#059669' }}>{(item.crates*CRATE_SIZE+item.singles).toLocaleString()}</span>
               </div>
