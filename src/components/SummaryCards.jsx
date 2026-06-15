@@ -12,6 +12,7 @@ export function CollectionChart({ collections }) {
   const [range, setRange] = useState(14)
   const today = new Date()
   today.setHours(0,0,0,0)
+  const todayStr = today.toISOString().slice(0,10)
 
   const data = useMemo(() => {
     return Array.from({ length: range }, (_, i) => {
@@ -21,25 +22,42 @@ export function CollectionChart({ collections }) {
       const eggs = collections
         .filter(c => c.date === dateStr)
         .reduce((s, c) => s + eggsFromRecord(c), 0)
-      return {
-        date: dateStr, eggs,
-        label: d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })
-      }
+      const isToday = dateStr === todayStr
+      const dayName = d.toLocaleDateString('en-NG', { weekday: 'short' }).slice(0,1)
+      const dayNum = d.toLocaleDateString('en-NG', { day: 'numeric' })
+      const monthShort = d.toLocaleDateString('en-NG', { month: 'short' })
+      return { date: dateStr, eggs, isToday, dayName, dayNum, monthShort, fullLabel: `${dayNum} ${monthShort}` }
     })
   }, [collections, range])
 
-  const avg = data.reduce((s, d) => s + d.eggs, 0) / range
+  // Only count days with data for average (avoids skew from empty days)
+  const daysWithData = data.filter(d => d.eggs > 0)
+  const avg = daysWithData.length > 0
+    ? daysWithData.reduce((s, d) => s + d.eggs, 0) / daysWithData.length
+    : 0
   const max = Math.max(...data.map(d => d.eggs), avg * 1.2, 300)
   const W = 100
-  const H = 40
-  const barW = W / range - 0.6
+  const H = 44
+  const slotW = W / range
+  const barW = Math.max(slotW * 0.7, 1)
+  const barOffset = (slotW - barW) / 2
+
+  // Label indices: first, middle, last (today)
+  const labelIndices = new Set([0, Math.floor(range/2), range-1])
+  if (range === 7) [0,2,4,6].forEach(i => labelIndices.add(i))
+  if (range === 14) [0,3,6,9,13].forEach(i => labelIndices.add(i))
+  if (range === 30) [0,6,13,20,29].forEach(i => labelIndices.add(i))
 
   return (
     <div style={{ background:'white', borderRadius:'16px', padding:'14px', boxShadow:'0 1px 8px rgba(0,0,0,0.07)', marginBottom:'10px' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
         <div>
           <p style={{ margin:'0 0 2px', fontSize:'11px', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em', color:'#9CA3AF' }}>Collection Trend</p>
-          <p style={{ margin:0, fontSize:'11px', color:'#6B7280' }}>avg <strong>{Math.round(avg).toLocaleString()}</strong> eggs/day</p>
+          <p style={{ margin:0, fontSize:'11px', color:'#6B7280' }}>
+            {daysWithData.length > 0
+              ? <>avg <strong>{Math.round(avg).toLocaleString()}</strong> eggs/day ({daysWithData.length} active day{daysWithData.length!==1?'s':''})</>
+              : 'No data yet'}
+          </p>
         </div>
         <div style={{ display:'flex', gap:'4px' }}>
           {[7, 14, 30].map(r => (
@@ -52,37 +70,60 @@ export function CollectionChart({ collections }) {
           ))}
         </div>
       </div>
-      <svg viewBox={`0 0 100 ${H + 12}`} style={{ width:'100%', display:'block' }} preserveAspectRatio="none">
+      <svg viewBox={`0 0 100 ${H + 14}`} style={{ width:'100%', display:'block' }} preserveAspectRatio="none">
+        {/* Average line */}
         {avg > 0 && (
           <line x1="0" y1={H-(avg/max)*H} x2="100" y2={H-(avg/max)*H}
-            stroke="#E5E7EB" strokeWidth="0.4" strokeDasharray="1,1" />
+            stroke="#CBD5E1" strokeWidth="0.35" strokeDasharray="1.5,1" />
         )}
         {data.map((d, i) => {
           const barH = max > 0 ? (d.eggs / max) * H : 0
-          const x = i * (W / range) + 0.3
-          const isAbove = d.eggs >= avg && d.eggs > 0
-          const isToday = d.date === today.toISOString().slice(0,10)
+          const x = i * slotW + barOffset
+          const isAbove = avg > 0 ? d.eggs >= avg && d.eggs > 0 : d.eggs > 0
+          const showLabel = labelIndices.has(i)
           return (
             <g key={d.date}>
-              <rect x={x} y={H-barH} width={barW} height={Math.max(barH, d.eggs > 0 ? 0.5 : 0)}
-                rx="0.8" fill={d.eggs === 0 ? '#F3F4F6' : isAbove ? '#4F6EF7' : '#FCD34D'}
-                opacity={isToday ? 1 : 0.85} />
-              {(range <= 14 ? i % 2 === 0 : i % 5 === 0) && (
-                <text x={x+barW/2} y={H+9} textAnchor="middle" fontSize="3" fill="#9CA3AF">
-                  {d.label.split(' ')[0]}
+              {/* Bar */}
+              <rect
+                x={x} y={H - barH}
+                width={barW}
+                height={Math.max(barH, d.eggs > 0 ? 0.8 : 0)}
+                rx="1"
+                fill={d.eggs === 0 ? '#F1F5F9' : isAbove ? '#4F6EF7' : '#FCD34D'}
+                opacity={d.isToday ? 1 : 0.8}
+              />
+              {/* Today highlight dot */}
+              {d.isToday && d.eggs > 0 && (
+                <circle cx={x + barW/2} cy={H - barH - 2} r="1" fill="#4F6EF7" />
+              )}
+              {/* X-axis label */}
+              {showLabel && (
+                <text
+                  x={x + barW/2} y={H + 10}
+                  textAnchor="middle" fontSize="2.8"
+                  fill={d.isToday ? '#4F6EF7' : '#9CA3AF'}
+                  fontWeight={d.isToday ? '700' : '400'}>
+                  {d.isToday ? 'Today' : d.fullLabel}
                 </text>
               )}
             </g>
           )
         })}
       </svg>
-      <div style={{ display:'flex', gap:'12px', marginTop:'4px' }}>
+      <div style={{ display:'flex', gap:'12px', marginTop:'2px' }}>
         <span style={{ display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', color:'#6B7280' }}>
-          <span style={{ width:8, height:8, borderRadius:2, background:'#4F6EF7', display:'inline-block' }} />Above avg
+          <span style={{ width:8, height:8, borderRadius:2, background:'#4F6EF7', display:'inline-block' }} />
+          Above avg
         </span>
         <span style={{ display:'flex', alignItems:'center', gap:'4px', fontSize:'10px', color:'#6B7280' }}>
-          <span style={{ width:8, height:8, borderRadius:2, background:'#FCD34D', display:'inline-block' }} />Below avg
+          <span style={{ width:8, height:8, borderRadius:2, background:'#FCD34D', display:'inline-block' }} />
+          Below avg
         </span>
+        {daysWithData.length < 3 && (
+          <span style={{ fontSize:'10px', color:'#9CA3AF', marginLeft:'auto', fontStyle:'italic' }}>
+            More data = better avg
+          </span>
+        )}
       </div>
     </div>
   )
