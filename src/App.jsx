@@ -45,8 +45,8 @@ function useIsDesktop() {
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
-  const { collections, addCollection }                    = useCollections(user?.id)
-  const { sales, addSale, updateSale, markPaid }          = useSales(user?.id)
+  const { collections, addCollection, loading: collectionsLoading } = useCollections(user?.id)
+  const { sales, addSale, updateSale, markPaid, loading: salesLoading } = useSales(user?.id)
   const { inventory, setTotalOwned }                      = useCrateInventory(user?.id)
   const { payments, addPayment, deletePayment }           = usePayments(user?.id)
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers(user?.id)
@@ -59,6 +59,7 @@ export default function App() {
   const [showChangePw, setShowChangePw] = useState(false)
   const isDesktop = useIsDesktop()
 
+  const dataLoading = collectionsLoading || salesLoading
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
   const allTabs = isAdmin
     ? [...NAV_TABS, { id: 'users', icon: '⚙️', label: 'Users' }]
@@ -406,7 +407,7 @@ export default function App() {
             // Dashboard: 3-column grid on desktop
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'24px', alignItems:'start' }}>
               <div style={{ gridColumn:'1 / 3' }}>
-                <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} isDesktop={true} />
+                <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} isDesktop={true} loading={dataLoading} />
               </div>
               <div>
                 <CrateInventoryCard

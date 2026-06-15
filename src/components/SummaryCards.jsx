@@ -129,7 +129,20 @@ export function CollectionChart({ collections }) {
   )
 }
 
-export default function SummaryCards({ collections, sales, expenses = [], payments = [], isDesktop = false }) {
+function SkeletonCard({ height = '80px' }) {
+  return (
+    <div style={{
+      background: 'white', borderRadius: '16px', padding: '14px',
+      boxShadow: '0 1px 8px rgba(0,0,0,0.07)', overflow: 'hidden'
+    }}>
+      <div style={{ background: '#F3F4F6', borderRadius: '6px', height: '10px', width: '50%', marginBottom: '10px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      <div style={{ background: '#E5E7EB', borderRadius: '6px', height: '28px', width: '70%', marginBottom: '8px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      <div style={{ background: '#F3F4F6', borderRadius: '6px', height: '10px', width: '40%', animation: 'pulse 1.5s ease-in-out infinite' }} />
+    </div>
+  )
+}
+
+export default function SummaryCards({ collections, sales, expenses = [], payments = [], isDesktop = false, loading = false }) {
   const now = new Date()
 
   // ── Run-rate ─────────────────────────────────────────────────────────────
@@ -252,6 +265,20 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
 
   const dp = isDesktop ? '22px' : '14px'
   const dv = isDesktop ? '32px' : '22px'
+
+  if (loading) {
+    return (
+      <div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: isDesktop?'14px':'10px', marginBottom: isDesktop?'14px':'10px' }}>
+          <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
+        </div>
+        <SkeletonCard />
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginTop:'10px' }}>
+          <SkeletonCard /><SkeletonCard />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
