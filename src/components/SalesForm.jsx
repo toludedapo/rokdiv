@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Plus, ShoppingCart, ChevronDown, ChevronUp, Trash2, Loader2 } from 'lucide-react'
 import { todayISO, fmtDate, fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
 
-export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMarkPaid, onReturnCrates, onQueueOffline, showToast }) {
+export default function SalesForm({ sales, cratesInFarm, customers = [], onSave, onDelete, onMarkPaid, onReturnCrates, onQueueOffline, showToast }) {
   const [open, setOpen] = useState(true)
   const [form, setForm] = useState({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', payment_mode: 'Cash', crates_loaned: '', notes: '' })
   const [error,  setError]  = useState('')
@@ -12,7 +12,13 @@ export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMar
   const [returnQty, setReturnQty]     = useState('')
   const [returning, setReturning]     = useState(false)
 
+  const [custSearch, setCustSearch] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const suggestions = custSearch.length > 0
+    ? customers.filter(c => c.name.toLowerCase().includes(custSearch.toLowerCase())).slice(0, 5)
+    : []
 
   async function handleSubmit() {
     if (!form.customer_name.trim()) return setError('Customer name is required.')
@@ -70,9 +76,32 @@ export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMar
       {open && (
         <div className="slide-up" style={{ padding: '0 18px 18px', borderTop: '1px solid #F3F4F6' }}>
           <div style={{ paddingTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div style={{ gridColumn: 'span 2' }}>
+            <div style={{ gridColumn: 'span 2', position: 'relative' }}>
               <label className="label">Customer</label>
-              <input type="text" className="field" placeholder="e.g. Mama Tunde" value={form.customer_name} onChange={e => set('customer_name', e.target.value)} style={{ fontSize: 16 }} />
+              <input type="text" className="field" placeholder="Type to search or add new..."
+                value={custSearch || form.customer_name}
+                onChange={e => {
+                  setCustSearch(e.target.value)
+                  set('customer_name', e.target.value)
+                  setShowSuggestions(true)
+                }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                onFocus={() => setShowSuggestions(true)}
+                style={{ fontSize: 16 }} />
+              {showSuggestions && suggestions.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1.5px solid #E5E7EB', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, overflow: 'hidden' }}>
+                  {suggestions.map(c => (
+                    <button key={c.id} onMouseDown={() => {
+                      set('customer_name', c.name)
+                      setCustSearch('')
+                      setShowSuggestions(false)
+                    }} style={{ width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F3F4F6' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>{c.name}</span>
+                      {c.whatsapp && <span style={{ fontSize: '11px', color: '#9CA3AF' }}>📱</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <label className="label">Date</label>
@@ -178,11 +207,7 @@ export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMar
                         {!s.isOffline && <button onClick={() => onDelete(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 3 }}><Trash2 size={13} /></button>}
                       </div>
                     </div>
-                    {s.payment_status === 'Credit' && !s.isOffline && (
-                      <button onClick={() => onMarkPaid(s.id)} style={{ marginTop: 8, fontSize: 11, color: '#4F6EF7', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                        Mark as Fully Paid
-                      </button>
-                    )}
+
                     {(s.crates_loaned - (s.crates_returned || 0)) > 0 && !s.isOffline && (
                       <div style={{ marginTop: 8 }}>
                         {returningId === s.id ? (

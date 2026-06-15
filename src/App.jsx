@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase.js'
 import { useAuth }          from './hooks/useAuth'
 import { useSales, useCollections, useCrateInventory } from './hooks/useCloudData'
+import { useCustomers }    from './hooks/useCustomers'
 import { usePayments }      from './hooks/usePayments'
 import { useExpenses }      from './hooks/useExpenses'
 import { useOfflineSync }   from './hooks/useOfflineSync'
@@ -15,6 +16,7 @@ import CreditTracker      from './components/CreditTracker'
 import HistoryLog         from './components/HistoryLog'
 import ExpenseTracker     from './components/ExpenseTracker'
 import UserManager        from './components/UserManager'
+import CustomerManager    from './components/CustomerManager'
 import Toast              from './components/Toast'
 import ChangePassword     from './components/ChangePassword'
 import CrateInventoryCard from './components/CrateInventoryCard'
@@ -22,12 +24,13 @@ import CrateInventoryCard from './components/CrateInventoryCard'
 const ADMIN_EMAIL = 'dadimula1@gmail.com'
 
 const NAV_TABS = [
-  { id: 'dashboard', icon: '⌂',  label: 'Home'     },
-  { id: 'collect',   icon: '🥚', label: 'Collect'  },
-  { id: 'sales',     icon: '🛒', label: 'Sales'    },
-  { id: 'credit',    icon: '📋', label: 'Credit'   },
-  { id: 'expenses',  icon: '💸', label: 'Expenses' },
-  { id: 'history',   icon: '📜', label: 'History'  },
+  { id: 'dashboard',  icon: '⌂',  label: 'Home'      },
+  { id: 'collect',    icon: '🥚', label: 'Collect'   },
+  { id: 'sales',      icon: '🛒', label: 'Sales'     },
+  { id: 'customers',  icon: '👥', label: 'Customers' },
+  { id: 'credit',     icon: '📋', label: 'Credit'    },
+  { id: 'expenses',   icon: '💸', label: 'Expenses'  },
+  { id: 'history',    icon: '📜', label: 'History'   },
 ]
 
 function useIsDesktop() {
@@ -46,6 +49,7 @@ export default function App() {
   const { sales, addSale, updateSale, markPaid }          = useSales(user?.id)
   const { inventory, setTotalOwned }                      = useCrateInventory(user?.id)
   const { payments, addPayment, deletePayment }           = usePayments(user?.id)
+  const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers(user?.id)
   const { expenses, addExpense, deleteExpense }           = useExpenses(user?.id)
 
   const [activeTab,    setActiveTab]    = useState(() => localStorage.getItem('rokdiv_tab') || 'dashboard')
@@ -57,7 +61,7 @@ export default function App() {
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
   const allTabs = isAdmin
-    ? [...NAV_TABS, { id: 'users', icon: '👥', label: 'Users' }]
+    ? [...NAV_TABS, { id: 'users', icon: '⚙️', label: 'Users' }]
     : NAV_TABS
 
   function handleTabChange(tab) {
@@ -200,6 +204,7 @@ export default function App() {
       {activeTab === 'sales' && (
         <SalesForm
           sales={sales || []}
+          customers={customers}
           cratesInFarm={Math.max(0, (inventory?.total_owned ?? 0) - cratesOut)}
           onSave={handleAddSale}
           onDelete={() => {}}

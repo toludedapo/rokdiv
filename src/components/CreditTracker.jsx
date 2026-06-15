@@ -13,7 +13,7 @@ function agingLabel(date) {
 }
 
 export default function CreditTracker({
-  sales, onMarkPaid, payments = [], onAddPayment, onDeletePayment, onReturnCrates, isAdmin
+  sales, onMarkPaid, payments = [], onAddPayment, onDeletePayment, onReturnCrates, isAdmin, customers = []
 }) {
   const [expandedCustomer, setExpandedCustomer] = useState(null)
   const [partialCustomer, setPartialCustomer]   = useState(null)
@@ -168,6 +168,13 @@ export default function CreditTracker({
     const msg = encodeURIComponent(
       `Hello ${debtor.name},\n\nThis is a reminder that you have an outstanding balance of *${fmt(debtor.remaining)}* for eggs purchased from ROKDIV Farm.\n\nDetails:\n${list}\n\nKindly settle at your earliest convenience. Thank you!`
     )
+    // Use saved customer number if available
+    const customer = customers.find(c => c.name.toLowerCase() === debtor.name.toLowerCase())
+    if (customer?.whatsapp) {
+      return `https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(
+        `Hello ${debtor.name},\n\nThis is a reminder that you have an outstanding balance of *${fmt(debtor.remaining)}* for eggs purchased from ROKDIV Farm.\n\nDetails:\n${list}\n\nKindly settle at your earliest convenience. Thank you!`
+      )}`
+    }
     return `https://wa.me/?text=${msg}`
   }
 
