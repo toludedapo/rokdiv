@@ -1,17 +1,97 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 const NAIRA = String.fromCharCode(0x20A6)
 const fmt = (n) => NAIRA + Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0 })
 
-// Helper - works with both {crates, singles} and {crates, loose_eggs} schemas
 function eggsFromRecord(r) {
   return (parseInt(r.crates || 0) * 30) + parseInt(r.singles || r.loose_eggs || 0)
+}
+
+// ── Collection Trend Chart (14 days, pure SVG) ───────────────────────────────
+function CollectionChart({ collections }) {
+  const days = 14
+  const today = new Date()
+  today.setHours(0,0,0,0)
+
+  const data = useMemo(() => {
+    return Array.from({ length: days }, (_, i) => {
+      const d = new Date(today)
+      d.setDate(d.getDate() - (days - 1 - i))
+      const dateStr = d.toISOString().slice(0, 10)
+      const eggs = collections
+        .filter(c => c.date === dateStr)
+        .reduce((s, c) => s + eggsFromRecord(c), 0)
+      return { date: dateStr, eggs, label: d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) }
+    })
+  }, [collections])
+
+  const avg = data.reduce((s, d) => s + d.eggs, 0) / days
+  const max = Math.max(...data.map(d => d.eggs), avg * 1.2, 300)
+
+  const W = 100
+  const H = 60
+  const barW = W / days - 0.8
+
+  return (
+    <div style={{ ...cardBase, marginBottom: '10px', padding: '14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <p style={cardLabel}>14-Day Collection Trend</p>
+        <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
+          avg {Math.round(avg).toLocaleString()} eggs/day
+        </span>
+      </div>
+      <svg viewBox={`0 0 100 ${H + 14}`} style={{ width: '100%', display: 'block' }} preserveAspectRatio="none">
+        {/* Average line */}
+        {avg > 0 && (
+          <line
+            x1="0" y1={H - (avg / max) * H}
+            x2="100" y2={H - (avg / max) * H}
+            stroke="#E5E7EB" strokeWidth="0.4" strokeDasharray="1,1"
+          />
+        )}
+        {/* Bars */}
+        {data.map((d, i) => {
+          const barH = max > 0 ? (d.eggs / max) * H : 0
+          const x = i * (W / days) + 0.4
+          const isAboveAvg = d.eggs >= avg
+          const isEmpty = d.eggs === 0
+          const isToday = d.date === today.toISOString().slice(0, 10)
+          return (
+            <g key={d.date}>
+              <rect
+                x={x} y={H - barH} width={barW} height={Math.max(barH, isEmpty ? 0 : 0.5)}
+                rx="0.8"
+                fill={isEmpty ? '#F3F4F6' : isAboveAvg ? '#4F6EF7' : '#FCD34D'}
+                opacity={isToday ? 1 : 0.85}
+              />
+              {/* Date label every 3rd bar */}
+              {i % 3 === 0 && (
+                <text x={x + barW / 2} y={H + 10} textAnchor="middle"
+                  fontSize="3.5" fill="#9CA3AF">
+                  {d.label.split(' ')[0]}
+                </text>
+              )}
+            </g>
+          )
+        })}
+      </svg>
+      <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: '#6B7280' }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: '#4F6EF7', display: 'inline-block' }} />
+          Above avg
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: '#6B7280' }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: '#FCD34D', display: 'inline-block' }} />
+          Below avg
+        </span>
+      </div>
+    </div>
+  )
 }
 
 export default function SummaryCards({ collections, sales, expenses = [], payments = [], isDesktop = false }) {
   const now = new Date()
 
-  // ── Run-rate: last 7 days of sales ─────────────────────────────────────────
   const runRate = useMemo(() => {
     const cutoff = new Date(now)
     cutoff.setDate(cutoff.getDate() - 7)
@@ -21,7 +101,6 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
     return totalEggs / 7
   }, [sales])
 
-  // ── Inventory ───────────────────────────────────────────────────────────────
   const totalCollected = useMemo(
     () => collections.reduce((s, c) => s + eggsFromRecord(c), 0),
     [collections]
@@ -45,7 +124,6 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
     daysLeft = Math.round(inStockEggs / runRate)
   }
 
-  // ── Revenue (this month) ────────────────────────────────────────────────────
   const thisMonthSales = useMemo(() => sales.filter(s => {
     const d = new Date(s.date)
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
@@ -56,7 +134,6 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
     [thisMonthSales]
   )
 
-  // ── Expenses (this month) ───────────────────────────────────────────────────
   const monthExpenses = useMemo(() => {
     return expenses
       .filter(e => {
@@ -69,7 +146,6 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
   const netProfit = monthRevenue - monthExpenses
   const hasExpenseData = monthExpenses > 0
 
-  // ── Outstanding credit (deduct partial payments) ───────────────────────────
   const creditSales = useMemo(
     () => sales.filter(s => s.payment_status === 'Credit' && !s.paid_at),
     [sales]
@@ -89,7 +165,6 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
     [creditSales, paidBySale]
   )
 
-  // ── Collection streak ───────────────────────────────────────────────────────
   const streak = useMemo(() => {
     const dates = [...new Set(collections.map(c => c.date))].sort().reverse()
     if (dates.length === 0) return 0
@@ -106,7 +181,6 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
     return count
   }, [collections])
 
-  // ── This month collections ──────────────────────────────────────────────────
   const monthCollectedCrates = useMemo(() => {
     return collections
       .filter(c => {
@@ -138,8 +212,6 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
 
       {/* Cards grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: isDesktop ? '14px' : '10px', marginBottom: isDesktop ? '14px' : '10px' }}>
-
-        {/* In Stock */}
         <div style={{ ...cardBase, ...(isLowStock ? lowStockStyle : {}), padding: isDesktop ? '22px' : '14px' }}>
           <p style={{ ...cardLabel, fontSize: isDesktop ? '12px' : '11px' }}>In Stock</p>
           <p style={{ ...cardValue, fontSize: isDesktop ? '32px' : '22px', color: isLowStock ? '#EF4444' : '#4F6EF7' }}>
@@ -147,9 +219,7 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
             <span style={{ fontSize: '12px', fontWeight: 500, color: '#9CA3AF', marginLeft: '3px' }}>crates</span>
           </p>
           <p style={cardSub}>{inStockEggs.toLocaleString()} eggs{inStockSingles > 0 ? ` (+${inStockSingles})` : ''}</p>
-          {isLowStock && (
-            <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#EF4444', fontWeight: 600 }}>⚠ Low stock</p>
-          )}
+          {isLowStock && <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#EF4444', fontWeight: 600 }}>⚠ Low stock</p>}
           {daysLeft !== null && !isLowStock && (
             <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6B7280' }}>
               ~{daysLeft} day{daysLeft !== 1 ? 's' : ''} left at current rate
@@ -157,27 +227,22 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
           )}
         </div>
 
-        {/* Monthly Revenue */}
         <div style={{ ...cardBase, padding: isDesktop ? '22px' : '14px' }}>
           <p style={{ ...cardLabel, fontSize: isDesktop ? '12px' : '11px' }}>Revenue (this month)</p>
           <p style={{ ...cardValue, fontSize: isDesktop ? '32px' : '22px', color: '#10B981' }}>{fmt(monthRevenue)}</p>
           <p style={{ ...cardSub, fontSize: isDesktop ? '13px' : '11px' }}>from {thisMonthSales.length} sale{thisMonthSales.length !== 1 ? 's' : ''}</p>
         </div>
 
-        {/* Outstanding */}
         <div style={{ ...cardBase, padding: isDesktop ? '22px' : '14px' }}>
           <p style={{ ...cardLabel, fontSize: isDesktop ? '12px' : '11px' }}>Outstanding</p>
           <p style={{ ...cardValue, fontSize: isDesktop ? '32px' : '22px', color: outstanding > 0 ? '#F59E0B' : '#10B981' }}>
             {outstanding > 0 ? fmt(outstanding) : 'Clear'}
           </p>
           <p style={{ ...cardSub, fontSize: isDesktop ? '13px' : '11px' }}>
-            {outstanding > 0
-              ? `${creditSales.length} debtor${creditSales.length !== 1 ? 's' : ''}`
-              : 'No unpaid credit'}
+            {outstanding > 0 ? `${creditSales.length} debtor${creditSales.length !== 1 ? 's' : ''}` : 'No unpaid credit'}
           </p>
         </div>
 
-        {/* Net Profit / Collected / Crates Sold */}
         {hasExpenseData ? (
           <div style={{ ...cardBase, padding: isDesktop ? '22px' : '14px' }}>
             <p style={{ ...cardLabel, fontSize: isDesktop ? '12px' : '11px' }}>{netProfit >= 0 ? 'Net Profit' : 'Net Loss'} (month)</p>
@@ -198,7 +263,7 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
         )}
       </div>
 
-      {/* Crates Sold card - full width */}
+      {/* Crates Sold card */}
       <div style={{ ...cardBase, marginBottom: isDesktop ? '14px' : '10px', padding: isDesktop ? '22px' : '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <p style={cardLabel}>Total Crates Sold</p>
@@ -215,6 +280,9 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
           </p>
         </div>
       </div>
+
+      {/* Collection Trend Chart */}
+      {collections.length > 0 && <CollectionChart collections={collections} />}
 
       {/* Quick Actions */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
@@ -272,11 +340,8 @@ const qaBtn = (color, bg, border) => ({
 })
 
 const cardBase = {
-  background: 'white',
-  borderRadius: '16px',
-  padding: '14px',
-  boxShadow: '0 1px 8px rgba(0,0,0,0.07)',
-  border: '1px solid transparent',
+  background: 'white', borderRadius: '16px', padding: '14px',
+  boxShadow: '0 1px 8px rgba(0,0,0,0.07)', border: '1px solid transparent',
   transition: 'border-color 0.3s ease',
 }
 const lowStockStyle = {
@@ -284,22 +349,11 @@ const lowStockStyle = {
   border: '1.5px solid #FCA5A5',
 }
 const cardLabel = {
-  margin: '0 0 4px',
-  fontSize: '11px',
-  fontWeight: 600,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  color: '#9CA3AF',
+  margin: '0 0 4px', fontSize: '11px', fontWeight: 600,
+  textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9CA3AF',
 }
 const cardValue = {
-  margin: '0 0 2px',
-  fontSize: '22px',
-  fontWeight: 800,
-  lineHeight: 1.1,
-  fontVariantNumeric: 'tabular-nums',
+  margin: '0 0 2px', fontSize: '22px', fontWeight: 800,
+  lineHeight: 1.1, fontVariantNumeric: 'tabular-nums',
 }
-const cardSub = {
-  margin: 0,
-  fontSize: '11px',
-  color: '#9CA3AF',
-}
+const cardSub = { margin: 0, fontSize: '11px', color: '#9CA3AF' }
