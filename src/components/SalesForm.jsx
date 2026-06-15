@@ -57,7 +57,11 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
   }
 
   const total    = (Number(form.crates)||0)*CRATE_SIZE + (Number(form.singles)||0)
-  const filtered = (filter === 'All' ? sales : sales.filter(s => s.payment_status === filter)).slice().sort((a,b) => a.date < b.date ? 1 : -1)
+  const filtered = (filter === 'All' ? sales : sales.filter(s => s.payment_status === filter)).slice().sort((a,b) => {
+    const dateA = a.created_at || a.date
+    const dateB = b.created_at || b.date
+    return dateA < dateB ? 1 : -1
+  })
 
   return (
     <div className="mx-4" style={{ background: '#FFFFFF', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1.5px solid #F3F4F6', overflow: 'hidden' }}>
@@ -142,7 +146,7 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
             )}
             <div>
               <label className="label">Crates Sold</label>
-              <input type="number" inputMode="numeric" className="field" placeholder="0" value={form.crates} onChange={e => set('crates', e.target.value)} style={{ fontSize: 16, padding: '13px 12px' }} />
+              <input type="number" inputMode="numeric" className="field" placeholder="0" value={form.crates} onChange={e => set('crates', e.target.value)} style={{ fontSize: 16 }} />
             </div>
             <div>
               <label className="label">Singles</label>
@@ -150,7 +154,7 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
             </div>
             <div>
               <label className="label">Amount (₦)</label>
-              <input type="number" inputMode="decimal" className="field" placeholder="0" value={form.amount} onChange={e => set('amount', e.target.value)} style={{ fontSize: 16, padding: '13px 12px' }} />
+              <input type="number" inputMode="decimal" className="field" placeholder="0" value={form.amount} onChange={e => set('amount', e.target.value)} style={{ fontSize: 16 }} />
             </div>
             <div>
               <label className="label">Crates Loaned <span style={{ color: '#D97706', fontWeight: 400, textTransform: 'none' }}>({cratesInFarm} avail)</span></label>
@@ -196,7 +200,7 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
                           {s.isOffline && <span className="badge-offline">💾 Offline</span>}
                           {(s.crates_loaned-(s.crates_returned||0)) > 0 && (
                             <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
-                              📦 {s.crates_loaned} loaned, {s.crates_returned||0} back
+                              {s.crates_loaned-(s.crates_returned||0)} crates out
                             </span>
                           )}
                         </div>
