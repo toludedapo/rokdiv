@@ -48,7 +48,11 @@ export default function CreditTracker({
       if (s.date < map[name].oldest) map[name].oldest = s.date
     })
     return Object.values(map).map(d => {
-      const totalPaid = d.sales.reduce((s, sale) => s + (paidBySaleMap[sale.id] || 0), 0)
+      // A sale marked as Paid via markPaid has no payments record - treat full amount as paid
+      const totalPaid = d.sales.reduce((s, sale) => {
+        if (sale.payment_status === 'Paid') return s + parseFloat(sale.amount || 0)
+        return s + (paidBySaleMap[sale.id] || 0)
+      }, 0)
       const remaining = Math.max(0, d.originalTotal - totalPaid)
       const isSettled = d.sales.every(s => s.payment_status === 'Paid') || remaining === 0
       return { ...d, totalPaid, remaining, isSettled }
