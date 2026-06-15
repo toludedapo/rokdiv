@@ -4,9 +4,12 @@ const fmt = (n) => `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigi
 
 function agingLabel(date) {
   const days = Math.floor((Date.now() - new Date(date)) / 86400000)
-  if (days <= 7)  return { label: `${days}d`, color: '#10B981', bg: '#D1FAE5' }
-  if (days <= 14) return { label: `${days}d`, color: '#F59E0B', bg: '#FEF3C7' }
-  return           { label: `${days}d overdue`, color: '#EF4444', bg: '#FEE2E2' }
+  if (days === 0) return { label: 'Today',         color: '#4F6EF7', bg: '#EEF1FF', urgent: false }
+  if (days <= 3)  return { label: `${days}d`,      color: '#10B981', bg: '#D1FAE5', urgent: false }
+  if (days <= 7)  return { label: `${days}d`,      color: '#10B981', bg: '#D1FAE5', urgent: false }
+  if (days <= 14) return { label: `${days}d`,      color: '#F59E0B', bg: '#FEF3C7', urgent: false }
+  if (days <= 30) return { label: `${days}d ⚠️`,   color: '#F97316', bg: '#FFF7ED', urgent: true  }
+  return           { label: `${days}d 🔴`,         color: '#EF4444', bg: '#FEE2E2', urgent: true  }
 }
 
 export default function CreditTracker({
@@ -312,6 +315,12 @@ export default function CreditTracker({
                   </button>
                   <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#9CA3AF' }}>
                     {debtor.sales.length} sale{debtor.sales.length !== 1 ? 's' : ''} · {new Date(debtor.oldest).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                    {!debtor.isSettled && (() => {
+                      const days = Math.floor((Date.now() - new Date(debtor.oldest)) / 86400000)
+                      if (days > 14) return <span style={{ marginLeft:'6px', color:'#EF4444', fontWeight:700 }}>· 🔴 {days}d overdue</span>
+                      if (days > 7)  return <span style={{ marginLeft:'6px', color:'#F97316', fontWeight:700 }}>· ⚠️ {days}d</span>
+                      return null
+                    })()}
                   </p>
                 </div>
                 {/* Balance hero */}
