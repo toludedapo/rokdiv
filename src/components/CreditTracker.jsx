@@ -23,7 +23,7 @@ export default function CreditTracker({
   const [returning, setReturning]               = useState(false)
   const [search, setSearch]                     = useState('')
   const [activeFilter, setActiveFilter]         = useState('outstanding')
-  const [showCrates, setShowCrates]             = useState(false)
+  const [activeSection, setActiveSection]       = useState('money')
 
   // ── Payment map ──────────────────────────────────────────────────────────
   const paidBySaleMap = useMemo(() => {
@@ -167,40 +167,47 @@ export default function CreditTracker({
   return (
     <div style={{ paddingBottom: '100px' }}>
 
-      {/* ── Hero Stats ─────────────────────────────────────────────────── */}
+      {/* ── Hero Tab Switcher ───────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-        {/* Money owed */}
-        <div style={{ background: totalOutstanding > 0 ? '#FEF3C7' : '#ECFDF5', borderRadius: '14px', padding: '16px', border: `1.5px solid ${totalOutstanding > 0 ? '#FDE68A' : '#A7F3D0'}` }}>
+        <div onClick={() => setActiveSection('money')} style={{
+          background: activeSection === 'money' ? (totalOutstanding > 0 ? '#FEF3C7' : '#ECFDF5') : 'white',
+          borderRadius: '14px', padding: '16px', cursor: 'pointer',
+          border: activeSection === 'money'
+            ? `2px solid ${totalOutstanding > 0 ? '#FCD34D' : '#6EE7B7'}`
+            : '2px solid #F3F4F6',
+          transition: 'all 0.15s'
+        }}>
           <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: 700, color: totalOutstanding > 0 ? '#92400E' : '#065F46', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             💰 Outstanding
           </p>
           <p style={{ margin: '0 0 2px', fontSize: '26px', fontWeight: 800, color: totalOutstanding > 0 ? '#B45309' : '#059669', lineHeight: 1.1 }}>
             {fmt(totalOutstanding)}
           </p>
-          <p style={{ margin: 0, fontSize: '11px', color: totalOutstanding > 0 ? '#92400E' : '#065F46' }}>
+          <p style={{ margin: 0, fontSize: '11px', color: '#9CA3AF' }}>
             {outstandingDebtors.length} debtor{outstandingDebtors.length !== 1 ? 's' : ''}
             {overdueCount > 0 && <span style={{ color: '#EF4444', marginLeft: '4px' }}>· {overdueCount} overdue</span>}
           </p>
         </div>
-        {/* Crates out */}
-        <div
-          onClick={() => setShowCrates(v => !v)}
-          style={{ background: totalCratesOut > 0 ? '#FFFBEB' : '#F9FAFB', borderRadius: '14px', padding: '16px', border: `1.5px solid ${totalCratesOut > 0 ? '#FDE68A' : '#E5E7EB'}`, cursor: 'pointer' }}>
+        <div onClick={() => setActiveSection('crates')} style={{
+          background: activeSection === 'crates' ? '#FFFBEB' : 'white',
+          borderRadius: '14px', padding: '16px', cursor: 'pointer',
+          border: activeSection === 'crates' ? '2px solid #FCD34D' : '2px solid #F3F4F6',
+          transition: 'all 0.15s'
+        }}>
           <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             📦 Crates Out
           </p>
           <p style={{ margin: '0 0 2px', fontSize: '26px', fontWeight: 800, color: totalCratesOut > 0 ? '#D97706' : '#9CA3AF', lineHeight: 1.1 }}>
             {totalCratesOut}
           </p>
-          <p style={{ margin: 0, fontSize: '11px', color: '#92400E' }}>
+          <p style={{ margin: 0, fontSize: '11px', color: '#9CA3AF' }}>
             {cratesOutCustomers.length} customer{cratesOutCustomers.length !== 1 ? 's' : ''}
-            <span style={{ marginLeft: '4px', color: '#9CA3AF' }}>· tap to {showCrates ? 'hide' : 'view'}</span>
           </p>
         </div>
       </div>
 
-      {/* ── Crates section (toggled) ────────────────────────────────────── */}
-      {showCrates && cratesOutCustomers.length > 0 && (
+      {/* ── Crates section ──────────────────────────────────────────────── */}
+      {activeSection === 'crates' && cratesOutCustomers.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
           {cratesOutCustomers.map(customer => (
             <div key={customer.name} style={{ background: 'white', borderRadius: '12px', marginBottom: '8px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1px solid #FDE68A', overflow: 'hidden' }}>
@@ -236,6 +243,9 @@ export default function CreditTracker({
           ))}
         </div>
       )}
+
+      {/* ── Money section ────────────────────────────────────────────────── */}
+      {activeSection === 'money' && <>
 
       {/* ── Search ──────────────────────────────────────────────────────── */}
       <div style={{ position: 'relative', marginBottom: '8px' }}>
@@ -499,6 +509,7 @@ export default function CreditTracker({
         )
       })}
     </div>
+      </>}
   )
 }
 
