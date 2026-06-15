@@ -61,7 +61,7 @@ export default function App() {
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
   const allTabs = isAdmin
-    ? [...NAV_TABS, { id: 'users', icon: '👥', label: 'Users' }]
+    ? [...NAV_TABS, { id: 'users', icon: '⚙️', label: 'Users' }]
     : NAV_TABS
 
   function handleTabChange(tab) {
@@ -234,15 +234,15 @@ export default function App() {
           isAdmin={isAdmin}
         />
       )}
-        {activeTab === 'customers' && (
-          <CustomerManager
-            customers={customers}
-            onAdd={addCustomer}
-            onUpdate={updateCustomer}
-            onDelete={isAdmin ? deleteCustomer : null}
-            isAdmin={isAdmin}
-          />
-        )}
+      {activeTab === 'customers' && (
+        <CustomerManager
+          customers={customers}
+          onAdd={addCustomer}
+          onUpdate={updateCustomer}
+          onDelete={isAdmin ? deleteCustomer : null}
+          isAdmin={isAdmin}
+        />
+      )}
 
       {activeTab === 'history' && (
         <HistoryLog
