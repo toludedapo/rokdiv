@@ -142,7 +142,7 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
             )}
             <div>
               <label className="label">Crates Sold</label>
-              <input type="number" inputMode="numeric" className="field" placeholder="0" value={form.crates} onChange={e => set('crates', e.target.value)} style={{ fontSize: 16 }} />
+              <input type="number" inputMode="numeric" className="field" placeholder="0" value={form.crates} onChange={e => set('crates', e.target.value)} style={{ fontSize: 16, padding: '13px 12px' }} />
             </div>
             <div>
               <label className="label">Singles</label>
@@ -150,7 +150,7 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
             </div>
             <div>
               <label className="label">Amount (₦)</label>
-              <input type="number" inputMode="decimal" className="field" placeholder="0" value={form.amount} onChange={e => set('amount', e.target.value)} style={{ fontSize: 16 }} />
+              <input type="number" inputMode="decimal" className="field" placeholder="0" value={form.amount} onChange={e => set('amount', e.target.value)} style={{ fontSize: 16, padding: '13px 12px' }} />
             </div>
             <div>
               <label className="label">Crates Loaned <span style={{ color: '#D97706', fontWeight: 400, textTransform: 'none' }}>({cratesInFarm} avail)</span></label>
@@ -196,7 +196,7 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
                           {s.isOffline && <span className="badge-offline">💾 Offline</span>}
                           {(s.crates_loaned-(s.crates_returned||0)) > 0 && (
                             <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
-                              {s.crates_loaned-(s.crates_returned||0)} crates out
+                              📦 {s.crates_loaned} loaned, {s.crates_returned||0} back
                             </span>
                           )}
                         </div>

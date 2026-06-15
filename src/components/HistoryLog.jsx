@@ -149,12 +149,15 @@ export default function HistoryLog({ sales, collections, onClearAll, showToast, 
                   <p style={{ fontSize:13, fontWeight:700, color:'#111827' }}>{item.customer_name}</p>
                   <p style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>{fmtDate(item.date)} · {(item.crates*CRATE_SIZE+item.singles).toLocaleString()} eggs</p>
                   <div style={{ display:'flex', gap:5, marginTop:5, flexWrap:'wrap' }}>
-                    <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:item.payment_status==='Paid'?'#ECFDF5':'#FFFBEB', color:item.payment_status==='Paid'?'#059669':'#D97706', border:`1px solid ${item.payment_status==='Paid'?'#A7F3D0':'#FDE68A'}` }}>
-                      {item.payment_status}
+                    <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99,
+                      background:item.payment_status==='Paid'?'#ECFDF5':'#FEF2F2',
+                      color:item.payment_status==='Paid'?'#059669':'#DC2626',
+                      border:`1px solid ${item.payment_status==='Paid'?'#A7F3D0':'#FECACA'}` }}>
+                      {item.payment_status==='Paid'?'🟢':'🔴'} {item.payment_status}
                     </span>
                     {item.crates_loaned > 0 && (
                       <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:99, background:'#FFFBEB', color:'#D97706', border:'1px solid #FDE68A' }}>
-                        {item.crates_loaned} loaned, {item.crates_returned||0} back
+                        📦 {item.crates_loaned} loaned, {item.crates_returned||0} back
                       </span>
                     )}
                   </div>
@@ -171,11 +174,18 @@ export default function HistoryLog({ sales, collections, onClearAll, showToast, 
                     )}
                   </div>
                   <p style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>
-                    {item.crates} crates + {item.singles} singles
+                    {(parseInt(item.crates*CRATE_SIZE)+parseInt(item.singles||0)).toLocaleString()} eggs
                     {item.notes ? ` · ${item.notes}` : ''}
                   </p>
                 </div>
-                <span className="num" style={{ fontSize:13, fontWeight:700, color:'#059669' }}>{(item.crates*CRATE_SIZE+item.singles).toLocaleString()}</span>
+                <div style={{ textAlign:'right' }}>
+                  <span className="num" style={{ fontSize:14, fontWeight:800, color:'#059669', display:'block' }}>
+                    {item.crates} crate{parseInt(item.crates)!==1?'s':''}
+                  </span>
+                  {parseInt(item.singles) > 0 && (
+                    <span style={{ fontSize:11, color:'#9CA3AF' }}>+{item.singles} singles</span>
+                  )}
+                </div>
               </div>
             )
           ))}

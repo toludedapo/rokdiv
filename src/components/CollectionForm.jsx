@@ -85,7 +85,11 @@ export default function CollectionForm({ collections, onSave, onDelete, onQueueO
 
           {total > 0 && (
             <p style={{ marginTop: 8, fontSize: 12, color: '#6B7280' }}>
-              Total: <span className="num" style={{ color: '#059669', fontWeight: 700 }}>{total.toLocaleString()} eggs</span>
+              <span className="num" style={{ color: '#059669', fontWeight: 700 }}>
+                {Number(form.crates)||0} crate{(Number(form.crates)||0)!==1?'s':''}
+                {Number(form.singles)>0?` + ${form.singles} singles`:''}
+              </span>
+              {' = '}<span style={{ color:'#6B7280' }}>{total.toLocaleString()} eggs</span>
             </p>
           )}
 
@@ -109,7 +113,14 @@ export default function CollectionForm({ collections, onSave, onDelete, onQueueO
                     <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{c.notes || `${c.crates} crates + ${c.singles} singles`}</p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span className="num" style={{ fontSize: 13, fontWeight: 700, color: '#059669' }}>{(c.crates*CRATE_SIZE+c.singles).toLocaleString()}</span>
+                    <div style={{ textAlign:'right' }}>
+                      <span className="num" style={{ fontSize: 14, fontWeight: 800, color: '#059669', display:'block' }}>
+                        {c.crates} crate{parseInt(c.crates)!==1?'s':''}
+                      </span>
+                      {parseInt(c.singles) > 0 && (
+                        <span style={{ fontSize:10, color:'#9CA3AF' }}>+{c.singles} singles</span>
+                      )}
+                    </div>
                     {!c.isOffline && (
                       <button onClick={() => onDelete(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 4 }}>
                         <Trash2 size={13} />
