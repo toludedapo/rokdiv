@@ -45,8 +45,8 @@ function useIsDesktop() {
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
-  const { collections, addCollection }                    = useCollections(user?.id)
-  const { sales, addSale, updateSale, markPaid }          = useSales(user?.id)
+  const { collections, addCollection, loading: collectionsLoading }                    = useCollections(user?.id)
+  const { sales, addSale, updateSale, markPaid, loading: salesLoading }          = useSales(user?.id)
   const { inventory, setTotalOwned }                      = useCrateInventory(user?.id)
   const { payments, addPayment, deletePayment }           = usePayments(user?.id)
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers(user?.id)
@@ -60,6 +60,7 @@ export default function App() {
   const isDesktop = useIsDesktop()
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+  const dataLoading = collectionsLoading || salesLoading
   const allTabs = isAdmin
     ? [...NAV_TABS, { id: 'users', icon: '⚙️', label: 'Users' }]
     : NAV_TABS
@@ -189,7 +190,7 @@ export default function App() {
             <CrateInventoryCard
               inventory={inventory}
               cratesOut={cratesOut}
-              loading={false}
+              loading={dataLoading}
               onSetTotalOwned={setTotalOwned}
             />
           </div>
@@ -415,7 +416,7 @@ export default function App() {
                 <CrateInventoryCard
                   inventory={inventory}
                   cratesOut={cratesOut}
-                  loading={false}
+                  loading={dataLoading}
                   onSetTotalOwned={setTotalOwned}
                 />
                 {collections.length > 0 && (
