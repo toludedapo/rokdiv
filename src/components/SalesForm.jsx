@@ -158,8 +158,11 @@ export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMar
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{s.customer_name}</span>
-                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: s.payment_status==='Paid' ? '#ECFDF5' : '#FFFBEB', color: s.payment_status==='Paid' ? '#059669' : '#D97706', border: `1px solid ${s.payment_status==='Paid' ? '#A7F3D0' : '#FDE68A'}` }}>
-                            {s.payment_status}{s.payment_mode ? ` · ${s.payment_mode}` : ''}
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                            background: s.payment_status==='Paid' ? '#ECFDF5' : '#FEF2F2',
+                            color: s.payment_status==='Paid' ? '#059669' : '#DC2626',
+                            border: `1px solid ${s.payment_status==='Paid' ? '#A7F3D0' : '#FECACA'}` }}>
+                            {s.payment_status==='Paid' ? '🟢' : '🔴'} {s.payment_status}{s.payment_mode ? ` · ${s.payment_mode}` : ''}
                           </span>
                           {s.isOffline && <span className="badge-offline">💾 Offline</span>}
                           {(s.crates_loaned-(s.crates_returned||0)) > 0 && (
@@ -175,7 +178,11 @@ export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMar
                         {!s.isOffline && <button onClick={() => onDelete(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 3 }}><Trash2 size={13} /></button>}
                       </div>
                     </div>
-
+                    {s.payment_status === 'Credit' && !s.isOffline && (
+                      <button onClick={() => onMarkPaid(s.id)} style={{ marginTop: 8, fontSize: 11, color: '#4F6EF7', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        Mark as Fully Paid
+                      </button>
+                    )}
                     {(s.crates_loaned - (s.crates_returned || 0)) > 0 && !s.isOffline && (
                       <div style={{ marginTop: 8 }}>
                         {returningId === s.id ? (
