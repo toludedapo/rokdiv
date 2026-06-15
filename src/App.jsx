@@ -8,7 +8,7 @@ import { useOfflineSync }   from './hooks/useOfflineSync'
 import { useWeeklySummary } from './hooks/useWeeklySummary'
 
 import AuthScreen         from './components/AuthScreen'
-import SummaryCards       from './components/SummaryCards'
+import SummaryCards, { CollectionChart } from './components/SummaryCards'
 import CollectionForm     from './components/CollectionForm'
 import SalesForm          from './components/SalesForm'
 import CreditTracker      from './components/CreditTracker'
@@ -400,6 +400,11 @@ export default function App() {
                   loading={false}
                   onSetTotalOwned={setTotalOwned}
                 />
+                {collections.length > 0 && (
+                  <div style={{ marginTop: '16px' }}>
+                    <CollectionChart collections={collections} />
+                  </div>
+                )}
               </div>
             </div>
           ) : (

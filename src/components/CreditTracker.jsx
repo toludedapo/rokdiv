@@ -21,6 +21,8 @@ export default function CreditTracker({
   const [returningSaleId, setReturningSaleId] = useState(null)
   const [returnQty, setReturnQty]             = useState('')
   const [returning, setReturning]             = useState(false)
+  const [search, setSearch]                   = useState('')
+  const [activeFilter, setActiveFilter]       = useState('outstanding')
 
   const paidBySaleMap = useMemo(() => {
     const map = {}
@@ -42,6 +44,24 @@ export default function CreditTracker({
     })
     return Object.values(map).sort((a, b) => new Date(a.oldest) - new Date(b.oldest))
   }, [sales])
+
+  const filteredDebtors = useMemo(() => {
+    let result = debtors
+    const q = search.toLowerCase().trim()
+    if (q) result = result.filter(d => d.name.toLowerCase().includes(q))
+    if (activeFilter === 'outstanding') result = result.filter(d => {
+      const paid = d.sales.reduce((s, sale) => s + (paidBySaleMap[sale.id] || 0), 0)
+      return d.total - paid > 0
+    })
+    if (activeFilter === 'partial') result = result.filter(d => {
+      const paid = d.sales.reduce((s, sale) => s + (paidBySaleMap[sale.id] || 0), 0)
+      return paid > 0 && paid < d.total
+    })
+    if (activeFilter === 'overdue') result = result.filter(d =>
+      Math.floor((Date.now() - new Date(d.oldest)) / 86400000) > 14
+    )
+    return result
+  }, [debtors, search, activeFilter, paidBySaleMap])
 
   const totalOutstanding = useMemo(() => {
     return debtors.reduce((sum, d) => {
@@ -179,8 +199,56 @@ export default function CreditTracker({
         </div>
       </div>}
 
+      {/* Search box */}
+      <div style={{ position: 'relative', marginBottom: '10px' }}>
+        <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: '#9CA3AF' }}>🔍</span>
+        <input
+          type="text"
+          placeholder="Search debtors..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            width: '100%', padding: '10px 12px 10px 34px',
+            borderRadius: '10px', border: '1.5px solid #E5E7EB',
+            fontSize: '14px', color: '#111827', background: 'white',
+            outline: 'none', boxSizing: 'border-box'
+          }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')}
+            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: '16px' }}>
+            ×
+          </button>
+        )}
+      </div>
+
+      {/* Filter chips */}
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
+        {[
+          { key: 'all',         label: 'All' },
+          { key: 'outstanding', label: 'Outstanding' },
+          { key: 'partial',     label: 'Partially Paid' },
+          { key: 'overdue',     label: 'Overdue >14d' },
+        ].map(f => (
+          <button key={f.key} onClick={() => setActiveFilter(f.key)} style={{
+            padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600,
+            border: `1.5px solid ${activeFilter === f.key ? '#4F6EF7' : '#E5E7EB'}`,
+            background: activeFilter === f.key ? '#EEF1FF' : 'white',
+            color: activeFilter === f.key ? '#4F6EF7' : '#6B7280',
+            cursor: 'pointer'
+          }}>{f.label}</button>
+        ))}
+      </div>
+
+      {/* No results */}
+      {filteredDebtors.length === 0 && debtors.length > 0 && (
+        <div style={{ textAlign: 'center', padding: '24px', color: '#9CA3AF', fontSize: '13px' }}>
+          No debtors match your search or filter.
+        </div>
+      )}
+
       {/* Debtor cards */}
-      {debtors.map(debtor => {
+      {filteredDebtors.map(debtor => {
         const totalPaid  = paidForCustomer(debtor.name)
         const balance    = debtor.total - totalPaid
         const pct        = debtor.total > 0 ? Math.min(100, (totalPaid / debtor.total) * 100) : 0

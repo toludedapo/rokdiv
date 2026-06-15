@@ -8,7 +8,7 @@ function eggsFromRecord(r) {
 }
 
 // ── Collection Trend Chart (14 days, pure SVG) ───────────────────────────────
-function CollectionChart({ collections }) {
+export function CollectionChart({ collections }) {
   const days = 14
   const today = new Date()
   today.setHours(0,0,0,0)
@@ -280,9 +280,6 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
           </p>
         </div>
       </div>
-
-      {/* Collection Trend Chart */}
-      {collections.length > 0 && <CollectionChart collections={collections} />}
 
       {/* Quick Actions */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
