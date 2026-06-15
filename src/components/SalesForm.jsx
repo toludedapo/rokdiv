@@ -175,11 +175,7 @@ export default function SalesForm({ sales, cratesInFarm, onSave, onDelete, onMar
                         {!s.isOffline && <button onClick={() => onDelete(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 3 }}><Trash2 size={13} /></button>}
                       </div>
                     </div>
-                    {s.payment_status === 'Credit' && !s.isOffline && (
-                      <button onClick={() => onMarkPaid(s.id)} style={{ marginTop: 8, fontSize: 11, color: '#4F6EF7', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                        Mark as Fully Paid
-                      </button>
-                    )}
+
                     {(s.crates_loaned - (s.crates_returned || 0)) > 0 && !s.isOffline && (
                       <div style={{ marginTop: 8 }}>
                         {returningId === s.id ? (
