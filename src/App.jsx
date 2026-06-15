@@ -24,12 +24,13 @@ import CrateInventoryCard from './components/CrateInventoryCard'
 const ADMIN_EMAIL = 'dadimula1@gmail.com'
 
 const NAV_TABS = [
-  { id: 'dashboard', icon: '⌂',  label: 'Home'     },
-  { id: 'collect',   icon: '🥚', label: 'Collect'  },
-  { id: 'sales',     icon: '🛒', label: 'Sales'    },
-  { id: 'credit',    icon: '📋', label: 'Credit'   },
-  { id: 'expenses',  icon: '💸', label: 'Expenses' },
-  { id: 'history',   icon: '📜', label: 'History'  },
+  { id: 'dashboard',  icon: '⌂',  label: 'Home'      },
+  { id: 'collect',    icon: '🥚', label: 'Collect'   },
+  { id: 'sales',      icon: '🛒', label: 'Sales'     },
+  { id: 'customers',  icon: '👥', label: 'Customers' },
+  { id: 'credit',     icon: '📋', label: 'Credit'    },
+  { id: 'expenses',   icon: '💸', label: 'Expenses'  },
+  { id: 'history',    icon: '📜', label: 'History'   },
 ]
 
 function useIsDesktop() {
