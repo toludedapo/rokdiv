@@ -33,9 +33,10 @@ export default function CreditTracker({
     return map
   }, [payments])
 
-  // ── Build debtors (all credit sales, not just unpaid) ───────────────────
+  // ── Build debtors (all credit sales including settled ones) ─────────────
   const allDebtors = useMemo(() => {
-    const creditSales = sales.filter(s => s.payment_status === 'Credit')
+    // Include both unpaid credit AND paid credit (originally credit, now settled)
+    const creditSales = sales.filter(s => s.payment_status === 'Credit' || (s.payment_status === 'Paid' && s.paid_at))
     const map = {}
     creditSales.forEach(s => {
       const name = s.customer_name || 'Unknown'
@@ -57,9 +58,9 @@ export default function CreditTracker({
     let result = allDebtors
     const q = search.toLowerCase().trim()
     if (q) result = result.filter(d => d.name.toLowerCase().includes(q))
-    if (activeFilter === 'outstanding') result = result.filter(d => d.remaining > 0)
+    if (activeFilter === 'outstanding') result = result.filter(d => d.remaining > 0 && d.sales.some(s => s.payment_status === 'Credit'))
     if (activeFilter === 'partial')     result = result.filter(d => d.totalPaid > 0 && d.remaining > 0)
-    if (activeFilter === 'settled')     result = result.filter(d => d.remaining === 0)
+    if (activeFilter === 'settled')     result = result.filter(d => d.remaining === 0 || d.sales.every(s => s.payment_status === 'Paid'))
     if (activeFilter === 'overdue')     result = result.filter(d =>
       d.remaining > 0 && Math.floor((Date.now() - new Date(d.oldest)) / 86400000) > 14
     )
