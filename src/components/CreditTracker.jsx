@@ -300,6 +300,16 @@ export default function CreditTracker({
                   style={actionBtn('#4F6EF7')}>
                   💰 Part Pay
                 </button>
+                <button onClick={async () => {
+                  for (const sale of debtor.sales) {
+                    const alreadyPaid = paidBySaleMap[sale.id] || 0
+                    if (parseFloat(sale.amount) - alreadyPaid > 0) {
+                      await handleMarkPaid(sale.id)
+                    }
+                  }
+                }} style={actionBtn('#059669')}>
+                  ✅ Mark Fully Paid
+                </button>
                 <a href={buildWhatsApp(debtor)} target="_blank" rel="noreferrer"
                   style={{ ...actionBtn('#25D366'), textDecoration: 'none', display: 'inline-block' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
