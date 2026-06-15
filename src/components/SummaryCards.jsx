@@ -29,11 +29,11 @@ function CollectionChart({ collections }) {
   const max = Math.max(...data.map(d => d.eggs), avg * 1.2, 300)
 
   const W = 100
-  const H = 60
+  const H = 40
   const barW = W / days - 0.8
 
   return (
-    <div style={{ ...cardBase, marginBottom: '10px', padding: '14px' }}>
+    <div style={{ ...cardBase, marginBottom: '10px', padding: '12px 14px 10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <p style={cardLabel}>14-Day Collection Trend</p>
         <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
@@ -67,7 +67,7 @@ function CollectionChart({ collections }) {
               {/* Date label every 3rd bar */}
               {i % 3 === 0 && (
                 <text x={x + barW / 2} y={H + 10} textAnchor="middle"
-                  fontSize="3.5" fill="#9CA3AF">
+                  fontSize="3" fill="#9CA3AF">
                   {d.label.split(' ')[0]}
                 </text>
               )}

@@ -200,7 +200,7 @@ export default function App() {
       {activeTab === 'sales' && (
         <SalesForm
           sales={sales || []}
-          cratesInFarm={inventory?.total_owned ?? 0}
+          cratesInFarm={Math.max(0, (inventory?.total_owned ?? 0) - cratesOut)}
           onSave={handleAddSale}
           onDelete={() => {}}
           onMarkPaid={handleMarkPaid}
