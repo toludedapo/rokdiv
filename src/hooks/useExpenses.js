@@ -68,8 +68,4 @@ export function useExpenses(userId) {
   }
 
   return { expenses, loading, addExpense, deleteExpense, getMonthlySummary }
-<<<<<<< Updated upstream
 }
-=======
-}
->>>>>>> Stashed changes
