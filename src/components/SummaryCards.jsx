@@ -266,8 +266,7 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
   const dp = isDesktop ? '22px' : '14px'
   const dv = isDesktop ? '32px' : '22px'
 
-  const hasData = collections.length > 0 || sales.length > 0
-  if (loading || !hasData) {
+  if (loading) {
     return (
       <div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: isDesktop?'14px':'10px', marginBottom: isDesktop?'14px':'10px' }}>
