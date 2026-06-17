@@ -120,7 +120,7 @@ export default function HistoryLog({ sales, collections, onClearAll, showToast, 
           <div style={{ padding:'10px 18px', background:'#F8F9FB', borderBottom:'1px solid #F3F4F6', display:'flex', justifyContent:'space-between', fontSize:'12px' }}>
             <span style={{ color:'#6B7280' }}>{filteredSales.length} sale{filteredSales.length !== 1 ? 's' : ''}</span>
             <span style={{ fontWeight:700, color:'#10B981' }}>
-              {String.fromCharCode(0x20A6)}{filteredSales.reduce((s, sale) => s + parseFloat(sale.amount || 0), 0).toLocaleString('en-NG')} total
+              {String.fromCharCode(0x20A6)}{filteredSales.filter(s => s.payment_status === 'Paid').reduce((s, sale) => s + parseFloat(sale.amount || 0), 0).toLocaleString('en-NG')} paid
             </span>
           </div>
         )}
