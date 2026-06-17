@@ -183,7 +183,7 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
   }), [sales])
 
   const monthRevenue = useMemo(
-    () => thisMonthSales.reduce((sum,s) => sum + parseFloat(s.amount||0), 0),
+    () => thisMonthSales.filter(s => s.payment_status === 'Paid').reduce((sum,s) => sum + parseFloat(s.amount||0), 0),
     [thisMonthSales]
   )
 
