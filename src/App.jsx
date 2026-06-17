@@ -252,6 +252,7 @@ export default function App() {
         <HistoryLog
           collections={collections}
           sales={sales}
+          payments={payments}
           onClearAll={handleClearAll}
           showToast={showToast}
           isAdmin={isAdmin}

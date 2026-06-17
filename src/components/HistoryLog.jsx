@@ -8,7 +8,7 @@ function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
-export default function HistoryLog({ sales, collections, onClearAll, showToast, isAdmin }) {
+export default function HistoryLog({ sales, collections, payments, onClearAll, showToast, isAdmin }) {
   const [tab, setTab] = useState('sales')
 
   // ── Date filter state ────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ export default function HistoryLog({ sales, collections, onClearAll, showToast, 
         <p className="label" style={{ marginBottom:10 }}>Export Data</p>
         <div style={{ display:'flex', gap:8 }}>
           {[
-            { label:'Sales CSV',       fn:()=>{ exportSalesCSV(sales);            showToast('Sales CSV downloaded')       } },
+            { label:'Sales CSV',       fn:()=>{ exportSalesCSV(sales, payments);  showToast('Sales CSV downloaded')       } },
             { label:'Collections CSV', fn:()=>{ exportCollectionsCSV(collections); showToast('Collections CSV downloaded') } },
           ].map(({label,fn}) => (
             <button key={label} onClick={fn} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6, background:'#F8F9FB', border:'1.5px solid #E5E7EB', borderRadius:12, padding:'10px 0', fontSize:12, fontWeight:600, color:'#6B7280', cursor:'pointer' }}>

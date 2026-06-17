@@ -16,21 +16,36 @@ function toCSV(rows, filename) {
   document.body.removeChild(a); URL.revokeObjectURL(url)
 }
 
-export function exportSalesCSV(sales) {
+export function exportSalesCSV(sales, payments = []) {
   const today = new Date().toISOString().slice(0,10)
-  const rows = sales.map(s => ({
-    'Date':             s.date,
-    'Customer':         s.customer_name,
-    'Crates Sold':      s.crates,
-    'Single Eggs':      s.singles,
-    'Total Eggs':       s.crates * CRATE_SIZE + s.singles,
-    'Amount (₦)':       s.amount,
-    'Payment Status':   s.payment_status,
-    'Paid At':          s.paid_at || '',
-    'Crates Loaned':    s.crates_loaned || 0,
-    'Crates Returned':  s.crates_returned || 0,
-    'Notes':            s.notes || '',
-  }))
+
+  // Build payment map: sale_id → total paid
+  const paidMap = {}
+  payments.forEach(p => {
+    paidMap[p.sale_id] = (paidMap[p.sale_id] || 0) + parseFloat(p.amount || 0)
+  })
+
+  const rows = sales.map(s => {
+    const amountPaid = s.payment_status === 'Paid'
+      ? parseFloat(s.amount || 0)
+      : (paidMap[s.id] || 0)
+    const balance = Math.max(0, parseFloat(s.amount || 0) - amountPaid)
+    return {
+      'Date':             s.date,
+      'Customer':         s.customer_name,
+      'Crates Sold':      s.crates,
+      'Single Eggs':      s.singles,
+      'Total Eggs':       s.crates * CRATE_SIZE + s.singles,
+      'Amount (₦)':       s.amount,
+      'Amount Paid (₦)':  amountPaid,
+      'Balance (₦)':      balance,
+      'Payment Status':   s.payment_status,
+      'Paid At':          s.paid_at || '',
+      'Crates Loaned':    s.crates_loaned || 0,
+      'Crates Returned':  s.crates_returned || 0,
+      'Notes':            s.notes || '',
+    }
+  })
   toCSV(rows, `ROKDIV-sales-${today}.csv`)
 }
 
