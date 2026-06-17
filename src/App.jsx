@@ -5,7 +5,6 @@ import { useSales, useCollections, useCrateInventory } from './hooks/useCloudDat
 import { useCustomers }    from './hooks/useCustomers'
 import { usePayments }      from './hooks/usePayments'
 import { useExpenses }      from './hooks/useExpenses'
-import { useDistributors }  from './hooks/useDistributors'
 import { useOfflineSync }   from './hooks/useOfflineSync'
 import { useWeeklySummary } from './hooks/useWeeklySummary'
 
@@ -21,7 +20,6 @@ import CustomerManager    from './components/CustomerManager'
 import Toast              from './components/Toast'
 import ChangePassword     from './components/ChangePassword'
 import CrateInventoryCard from './components/CrateInventoryCard'
-import DistributorPanel   from './components/DistributorPanel'
 
 const ADMIN_EMAIL = 'dadimula1@gmail.com'
 
@@ -53,7 +51,6 @@ export default function App() {
   const { payments, addPayment, deletePayment }           = usePayments(user?.id)
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers(user?.id)
   const { expenses, addExpense, deleteExpense }           = useExpenses(user?.id)
-  const { distributors, loading: distributorsLoading }    = useDistributors()
 
   const [activeTab,    setActiveTab]    = useState(() => localStorage.getItem('rokdiv_tab') || 'dashboard')
   const [toast,        setToast]        = useState(null)
@@ -189,7 +186,6 @@ export default function App() {
       {activeTab === 'dashboard' && (
         <>
           <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} />
-          <DistributorPanel distributors={distributors} loading={distributorsLoading} />
           <div style={{ marginTop:'12px' }}>
             <CrateInventoryCard
               inventory={inventory}
@@ -423,7 +419,6 @@ export default function App() {
                   loading={dataLoading}
                   onSetTotalOwned={setTotalOwned}
                 />
-                <DistributorPanel distributors={distributors} loading={distributorsLoading} />
                 {collections.length > 0 && (
                   <div style={{ marginTop: '16px' }}>
                     <CollectionChart collections={collections} />
