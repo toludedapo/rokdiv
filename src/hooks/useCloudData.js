@@ -40,7 +40,7 @@ export function useSales(userId) {
   const addSale = async (sale) => {
     const { data, error } = await supabase
       .from('sales')
-      .insert({ ...sale, user_id: userId })
+      .insert({ ...sale, user_id: ADMIN_USER_ID })
       .select()
       .maybeSingle()
     if (!error && data) setSales(prev => [data, ...prev])
@@ -98,7 +98,7 @@ export function useCollections(userId) {
   const addCollection = async (col) => {
     const { data, error } = await supabase
       .from('collections')
-      .insert({ ...col, user_id: userId })
+      .insert({ ...col, user_id: ADMIN_USER_ID })
       .select()
       .maybeSingle()
     if (!error && data) setCollections(prev => [data, ...prev])
