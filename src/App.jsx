@@ -5,6 +5,7 @@ import { useSales, useCollections, useCrateInventory } from './hooks/useCloudDat
 import { useCustomers }    from './hooks/useCustomers'
 import { usePayments }      from './hooks/usePayments'
 import { useExpenses }      from './hooks/useExpenses'
+import { useDistributors }  from './hooks/useDistributors'
 import { useOfflineSync }   from './hooks/useOfflineSync'
 import { useWeeklySummary } from './hooks/useWeeklySummary'
 
@@ -20,6 +21,7 @@ import CustomerManager    from './components/CustomerManager'
 import Toast              from './components/Toast'
 import ChangePassword     from './components/ChangePassword'
 import CrateInventoryCard from './components/CrateInventoryCard'
+import DistributorPanel   from './components/DistributorPanel'
 
 const ADMIN_EMAIL = 'dadimula1@gmail.com'
 
@@ -45,12 +47,13 @@ function useIsDesktop() {
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
-  const { collections, addCollection, loading: collectionsLoading } = useCollections(user?.id)
-  const { sales, addSale, updateSale, markPaid, loading: salesLoading } = useSales(user?.id)
+  const { collections, addCollection }                    = useCollections(user?.id)
+  const { sales, addSale, updateSale, markPaid }          = useSales(user?.id)
   const { inventory, setTotalOwned }                      = useCrateInventory(user?.id)
   const { payments, addPayment, deletePayment }           = usePayments(user?.id)
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers(user?.id)
   const { expenses, addExpense, deleteExpense }           = useExpenses(user?.id)
+  const { distributors, loading: distributorsLoading }    = useDistributors()
 
   const [activeTab,    setActiveTab]    = useState(() => localStorage.getItem('rokdiv_tab') || 'dashboard')
   const [toast,        setToast]        = useState(null)
@@ -60,7 +63,6 @@ export default function App() {
   const isDesktop = useIsDesktop()
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
-  const dataLoading = !!(collectionsLoading || salesLoading)
   const allTabs = isAdmin
     ? [...NAV_TABS, { id: 'users', icon: '⚙️', label: 'Users' }]
     : NAV_TABS
@@ -186,11 +188,12 @@ export default function App() {
       {activeTab === 'dashboard' && (
         <>
           <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} />
+          <DistributorPanel distributors={distributors} loading={distributorsLoading} />
           <div style={{ marginTop:'12px' }}>
             <CrateInventoryCard
               inventory={inventory}
               cratesOut={cratesOut}
-              loading={dataLoading}
+              loading={false}
               onSetTotalOwned={setTotalOwned}
             />
           </div>
@@ -416,7 +419,7 @@ export default function App() {
                 <CrateInventoryCard
                   inventory={inventory}
                   cratesOut={cratesOut}
-                  loading={dataLoading}
+                  loading={false}
                   onSetTotalOwned={setTotalOwned}
                 />
                 {collections.length > 0 && (
