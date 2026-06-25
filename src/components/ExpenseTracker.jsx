@@ -49,7 +49,7 @@ export default function ExpenseTracker({ expenses = [], onAdd, onDelete, monthly
     return monthlySales
       .filter(s => {
         const d = new Date(s.date)
-        return d.getFullYear() === viewYear && d.getMonth() === viewMonth
+        return d.getFullYear() === viewYear && d.getMonth() === viewMonth && s.payment_status === 'Paid'
       })
       .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0)
   }, [monthlySales, viewYear, viewMonth])
