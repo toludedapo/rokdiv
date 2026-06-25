@@ -472,7 +472,7 @@ function qaBtn(primary) {
 
 const cardSurface = {
   background:'#FFFFFF', borderRadius:'16px', padding:'14px',
-  border:'1px solid #E5E5EA', boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
+  border:'1.5px solid #D1D1D6', boxShadow:'0 2px 6px rgba(0,0,0,0.08)',
 }
 const statValue = {
   margin:'0 0 2px', fontSize:'24px', fontWeight:500, color:'#1C1C1E',
