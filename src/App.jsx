@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Home, Egg, ShoppingCart, Users as UsersIcon, FileText, Receipt, History as HistoryIcon, Settings, Key, LogOut } from 'lucide-react'
 import { supabase } from './lib/supabase.js'
 import { useAuth }          from './hooks/useAuth'
 import { useSales, useCollections, useCrateInventory } from './hooks/useCloudData'
@@ -25,13 +26,13 @@ const ADMIN_EMAIL = 'dadimula1@gmail.com'
 
 // Sentence case labels, quiet line icons instead of emoji
 const NAV_TABS = [
-  { id: 'dashboard',  icon: 'ti-home',          label: 'Home'      },
-  { id: 'collect',    icon: 'ti-egg',           label: 'Collect'   },
-  { id: 'sales',      icon: 'ti-shopping-cart',  label: 'Sales'     },
-  { id: 'customers',  icon: 'ti-users',         label: 'Customers' },
-  { id: 'credit',     icon: 'ti-file-text',      label: 'Credit'    },
-  { id: 'expenses',   icon: 'ti-receipt',        label: 'Expenses'  },
-  { id: 'history',    icon: 'ti-history',        label: 'History'   },
+  { id: 'dashboard',  Icon: Home,         label: 'Home'      },
+  { id: 'collect',    Icon: Egg,          label: 'Collect'   },
+  { id: 'sales',      Icon: ShoppingCart, label: 'Sales'     },
+  { id: 'customers',  Icon: UsersIcon,    label: 'Customers' },
+  { id: 'credit',     Icon: FileText,     label: 'Credit'    },
+  { id: 'expenses',   Icon: Receipt,      label: 'Expenses'  },
+  { id: 'history',    Icon: HistoryIcon,  label: 'History'   },
 ]
 
 function useIsDesktop() {
@@ -70,7 +71,7 @@ export default function App() {
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
   const dataLoading = !!(collectionsLoading || salesLoading)
   const allTabs = isAdmin
-    ? [...NAV_TABS, { id: 'users', icon: 'ti-settings', label: 'Users' }]
+    ? [...NAV_TABS, { id: 'users', Icon: Settings, label: 'Users' }]
     : NAV_TABS
 
   function handleTabChange(tab) {
@@ -184,9 +185,7 @@ export default function App() {
   )
 
   const metaName = user?.user_metadata?.full_name
-  const greetName = metaName
-    ? metaName.split(' ')[0]
-    : (isAdmin ? 'Admin' : 'there')
+  const greetName = metaName ? metaName.split(' ')[0] : null
   const initials = metaName
     ? metaName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
     : (isAdmin ? 'A' : 'S')
@@ -282,7 +281,7 @@ export default function App() {
           {activeTab === 'dashboard' ? (
             <>
               <p style={{ margin:0, fontSize:'12px', color:'#8E8E93' }}>{getGreeting()}</p>
-              <h1 style={{ margin:0, fontSize:'19px', fontWeight:500, color:'#1C1C1E', letterSpacing:'-0.02em' }}>{greetName} · ROKDIV</h1>
+              <h1 style={{ margin:0, fontSize:'19px', fontWeight:500, color:'#1C1C1E', letterSpacing:'-0.02em' }}>{greetName ? `${greetName} · ROKDIV` : 'ROKDIV'}</h1>
             </>
           ) : (
             <h1 style={{ margin:0, fontSize:'17px', fontWeight:500, color:'#1C1C1E', letterSpacing:'-0.02em' }}>ROKDIV</h1>
@@ -303,14 +302,14 @@ export default function App() {
           </span>
           {!isAdmin && (
             <button onClick={() => setShowChangePw(true)} style={iconBtn}>
-              <i className="ti ti-key" style={{ fontSize:14 }} aria-hidden="true"></i>
+              <Key size={14} />
             </button>
           )}
           <div style={{ width:32, height:32, borderRadius:'50%', background:'#1C1C1E', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:500, color:'#FFFFFF' }}>
             {initials}
           </div>
           <button onClick={signOut} style={{ ...iconBtn, color:'#FF453A' }}>
-            <i className="ti ti-logout" style={{ fontSize:14 }} aria-hidden="true"></i>
+            <LogOut size={14} />
           </button>
         </div>
       </div>
@@ -324,7 +323,7 @@ export default function App() {
               fontWeight: 500, fontSize:'13px', cursor:'pointer',
               display:'flex', alignItems:'center', gap:'6px', whiteSpace:'nowrap', marginBottom:'-1px'
             }}>
-              <i className={`ti ${tab.icon}`} style={{ fontSize:15 }} aria-hidden="true"></i> {tab.label}
+              <tab.Icon size={15} /> {tab.label}
             </button>
           ))}
         </nav>
@@ -361,14 +360,14 @@ export default function App() {
         </span>
         {!isAdmin && (
           <button onClick={() => setShowChangePw(true)} style={iconBtn}>
-            <i className="ti ti-key" style={{ fontSize:13 }} aria-hidden="true"></i>
+            <Key size={13} />
           </button>
         )}
         <div style={{ width:28, height:28, borderRadius:'50%', background:'#1C1C1E', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:500, color:'#FFFFFF' }}>
           {initials}
         </div>
         <button onClick={signOut} style={{ ...iconBtn, color:'#FF453A' }}>
-          <i className="ti ti-logout" style={{ fontSize:13 }} aria-hidden="true"></i>
+          <LogOut size={13} />
         </button>
       </div>
     </div>
@@ -400,9 +399,7 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div style={{ maxWidth:'960px', margin:'0 auto' }}>
-              {tabContent}
-            </div>
+            tabContent
           )}
         </div>
         {showChangePw && <ChangePassword onClose={() => setShowChangePw(false)} />}
@@ -432,7 +429,7 @@ export default function App() {
                 cursor:'pointer', display:'flex', flexDirection:'column',
                 alignItems:'center', gap:'3px', position:'relative'
               }}>
-              <i className={`ti ${tab.icon}`} style={{ fontSize: allTabs.length > 6 ? 16 : 18, color: active ? '#1C1C1E' : '#8E8E93' }} aria-hidden="true"></i>
+              <tab.Icon size={allTabs.length > 6 ? 16 : 18} color={active ? '#1C1C1E' : '#8E8E93'} />
               <span style={{
                 fontSize:'9px', fontWeight: active ? 500 : 400,
                 color: active ? '#1C1C1E' : '#8E8E93'

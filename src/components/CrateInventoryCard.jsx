@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Settings2 } from 'lucide-react'
 
 const SIGNAL = {
   green:  '#34C759',
@@ -45,7 +45,7 @@ export default function CrateInventoryCard({ inventory, cratesOut, loading, onSe
             border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: editing ? '#FFFFFF' : '#8E8E93', cursor: 'pointer'
           }}>
-          <i className="ti ti-adjustments" style={{ fontSize: 14 }} aria-hidden="true"></i>
+          <Settings2 size={14} />
         </button>
       </div>
 
