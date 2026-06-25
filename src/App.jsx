@@ -23,14 +23,15 @@ import CrateInventoryCard from './components/CrateInventoryCard'
 
 const ADMIN_EMAIL = 'dadimula1@gmail.com'
 
+// Sentence case labels, quiet line icons instead of emoji
 const NAV_TABS = [
-  { id: 'dashboard',  icon: '⌂',  label: 'Home'      },
-  { id: 'collect',    icon: '🥚', label: 'Collect'   },
-  { id: 'sales',      icon: '🛒', label: 'Sales'     },
-  { id: 'customers',  icon: '👥', label: 'Customers' },
-  { id: 'credit',     icon: '📋', label: 'Credit'    },
-  { id: 'expenses',   icon: '💸', label: 'Expenses'  },
-  { id: 'history',    icon: '📜', label: 'History'   },
+  { id: 'dashboard',  icon: 'ti-home',          label: 'Home'      },
+  { id: 'collect',    icon: 'ti-egg',           label: 'Collect'   },
+  { id: 'sales',      icon: 'ti-shopping-cart',  label: 'Sales'     },
+  { id: 'customers',  icon: 'ti-users',         label: 'Customers' },
+  { id: 'credit',     icon: 'ti-file-text',      label: 'Credit'    },
+  { id: 'expenses',   icon: 'ti-receipt',        label: 'Expenses'  },
+  { id: 'history',    icon: 'ti-history',        label: 'History'   },
 ]
 
 function useIsDesktop() {
@@ -41,6 +42,13 @@ function useIsDesktop() {
     return () => window.removeEventListener('resize', handler)
   }, [])
   return isDesktop
+}
+
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
 }
 
 export default function App() {
@@ -62,15 +70,12 @@ export default function App() {
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
   const dataLoading = !!(collectionsLoading || salesLoading)
   const allTabs = isAdmin
-    ? [...NAV_TABS, { id: 'users', icon: '⚙️', label: 'Users' }]
+    ? [...NAV_TABS, { id: 'users', icon: 'ti-settings', label: 'Users' }]
     : NAV_TABS
 
   function handleTabChange(tab) {
     setActiveTab(tab)
     localStorage.setItem('rokdiv_tab', tab)
-    // Refetch data when switching tabs to ensure fresh data
-    if (refetchSales) refetchSales()
-    if (refetchCollections) refetchCollections()
   }
 
   function showToast(msg) {
@@ -116,19 +121,19 @@ export default function App() {
 
   async function handleMarkPaid(saleId) {
     await markPaid(saleId)
-    showToast('Marked as paid ✓')
+    showToast('Marked as paid')
   }
 
   async function handleReturnCrates(saleId, newReturnedCount) {
     const { error } = await updateSale(saleId, { crates_returned: newReturnedCount })
     if (error) showToast('Could not update crate return')
-    else showToast('Crate return recorded ✓')
+    else showToast('Crate return recorded')
   }
 
   async function handleAddPayment(data) {
     try {
       await addPayment({ ...data, user_id: user.id })
-      showToast('Payment recorded ✓')
+      showToast('Payment recorded')
     } catch (e) {
       showToast('Could not save payment')
     }
@@ -136,7 +141,7 @@ export default function App() {
 
   async function handleAddExpense(data) {
     const { error } = await addExpense(data)
-    if (!error) showToast('Expense logged ✓')
+    if (!error) showToast('Expense logged')
     return { error }
   }
 
@@ -167,11 +172,8 @@ export default function App() {
   }
 
   if (authLoading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#F0F2F5' }}>
-      <div style={{ textAlign:'center' }}>
-        <div style={{ fontSize:'32px', marginBottom:'12px' }}>🥚</div>
-        <p style={{ color:'#9CA3AF', fontSize:'14px' }}>Loading…</p>
-      </div>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'#0D0D0D' }}>
+      <p style={{ color:'#8E8E93', fontSize:'14px' }}>Loading…</p>
     </div>
   )
 
@@ -180,6 +182,10 @@ export default function App() {
   const cratesOut = (sales || []).reduce(
     (s, sale) => s + (parseInt(sale.crates_loaned || 0) - parseInt(sale.crates_returned || 0)), 0
   )
+
+  const firstName = (user?.user_metadata?.full_name || user?.email || '').split(/[\s@]/)[0]
+  const greetName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : (isAdmin ? 'Admin' : 'there')
+  const initials = (firstName || 'R').slice(0, 2).toUpperCase()
 
   const tabContent = (
     <>
@@ -247,7 +253,6 @@ export default function App() {
           isAdmin={isAdmin}
         />
       )}
-
       {activeTab === 'history' && (
         <HistoryLog
           collections={collections}
@@ -264,80 +269,60 @@ export default function App() {
     </>
   )
 
-  // ── Header (shared) ─────────────────────────────────────────────────
+  // ── Header (shared, new system) ──────────────────────────────────────
   const header = isDesktop ? (
-    <div style={{
-      background:'white', borderBottom:'1px solid #F3F4F6',
-      position:'sticky', top:0, zIndex:50,
-      boxShadow:'0 1px 6px rgba(0,0,0,0.06)',
-    }}>
-      {/* Row 1: Logo + Actions */}
+    <div style={{ background:'#FFFFFF', borderBottom:'1px solid #E5E5EA', position:'sticky', top:0, zIndex:50 }}>
       <div style={{
         display:'flex', alignItems:'center', justifyContent:'space-between',
-        padding:'12px 32px', borderBottom:'1px solid #F3F4F6'
+        padding:'14px 32px', borderBottom:'0.5px solid #E5E5EA'
       }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-          <span style={{ fontSize:'22px' }}>🥚</span>
-          <div>
-            <h1 style={{ margin:0, fontSize:'17px', fontWeight:800, color:'#111827', letterSpacing:'-0.02em' }}>ROKDIV</h1>
-            <p style={{ margin:0, fontSize:'11px', color:'#9CA3AF' }}>Farm Tracker</p>
-          </div>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-          <span style={{
-            background: isAdmin ? '#EEF1FF' : '#F0FDF4',
-            color:      isAdmin ? '#4F6EF7' : '#16A34A',
-            fontSize:'10px', fontWeight:700, padding:'3px 8px',
-            borderRadius:'20px', letterSpacing:'0.04em',
-            border:`1px solid ${isAdmin ? '#C7D2FE' : '#BBF7D0'}`
-          }}>
-            {isAdmin ? 'ADMIN' : 'STAFF'}
-          </span>
-          {!isAdmin && (
-            <button onClick={() => setShowChangePw(true)}
-              style={{ background:'#F3F4F6', border:'none', borderRadius:'8px',
-                padding:'7px 10px', cursor:'pointer', color:'#6B7280',
-                display:'flex', alignItems:'center', gap:'4px', fontSize:'12px', fontWeight:600 }}>
-              🔑 Set Password
-            </button>
+        <div>
+          {activeTab === 'dashboard' ? (
+            <>
+              <p style={{ margin:0, fontSize:'12px', color:'#8E8E93' }}>{getGreeting()}</p>
+              <h1 style={{ margin:0, fontSize:'19px', fontWeight:500, color:'#1C1C1E', letterSpacing:'-0.02em' }}>{greetName} · ROKDIV</h1>
+            </>
+          ) : (
+            <h1 style={{ margin:0, fontSize:'17px', fontWeight:500, color:'#1C1C1E', letterSpacing:'-0.02em' }}>ROKDIV</h1>
           )}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
           {!isOnline && (
-            <span style={{
-              background:'#FEF3C7', color:'#92400E', fontSize:'11px',
-              fontWeight:600, padding:'3px 8px', borderRadius:'20px',
-              border:'1px solid #FDE68A'
-            }}>
+            <span style={{ background:'rgba(255,159,10,0.16)', color:'#FF9F0A', fontSize:'11px', fontWeight:500, padding:'4px 9px', borderRadius:'99px' }}>
               Offline{offlineCount > 0 ? ` · ${offlineCount} queued` : ''}
             </span>
           )}
-          <button onClick={signOut} style={{
-            background:'#FEE2E2', border:'none', borderRadius:'8px',
-            padding:'7px 12px', cursor:'pointer', fontSize:'12px',
-            fontWeight:600, color:'#DC2626', display:'flex', alignItems:'center', gap:'4px'
+          <span style={{
+            fontSize:'11px', fontWeight:500, padding:'4px 9px', borderRadius:'99px',
+            color: isAdmin ? '#0A84FF' : '#34C759',
+            background: isAdmin ? 'rgba(10,132,255,0.12)' : 'rgba(52,199,89,0.12)'
           }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
-            </svg>
-            Logout
+            {isAdmin ? 'Admin' : 'Staff'}
+          </span>
+          {!isAdmin && (
+            <button onClick={() => setShowChangePw(true)} style={iconBtn}>
+              <i className="ti ti-key" style={{ fontSize:14 }} aria-hidden="true"></i>
+            </button>
+          )}
+          <div style={{ width:32, height:32, borderRadius:'50%', background:'#1C1C1E', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:500, color:'#FFFFFF' }}>
+            {initials}
+          </div>
+          <button onClick={signOut} style={{ ...iconBtn, color:'#FF453A' }}>
+            <i className="ti ti-logout" style={{ fontSize:14 }} aria-hidden="true"></i>
           </button>
         </div>
       </div>
-      {/* Row 2: Nav - aligned with content area */}
       <div style={{ maxWidth:'1280px', margin:'0 auto', padding:'0 32px' }}>
-        <nav style={{ display:'flex', gap:'2px' }}>
+        <nav style={{ display:'flex', gap:'4px' }}>
           {allTabs.map(tab => (
             <button key={tab.id} onClick={() => handleTabChange(tab.id)} style={{
-              padding:'10px 16px', borderRadius:'0', border:'none',
-              borderBottom: activeTab === tab.id ? '2.5px solid #4F6EF7' : '2.5px solid transparent',
-              background: 'transparent',
-              color: activeTab === tab.id ? '#4F6EF7' : '#6B7280',
-              fontWeight: activeTab === tab.id ? 700 : 500,
-              fontSize:'13px', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px',
-              transition:'all 0.15s', whiteSpace:'nowrap', marginBottom:'-1px'
+              padding:'10px 14px', border:'none', background:'transparent',
+              borderBottom: activeTab === tab.id ? '2px solid #1C1C1E' : '2px solid transparent',
+              color: activeTab === tab.id ? '#1C1C1E' : '#8E8E93',
+              fontWeight: 500, fontSize:'13px', cursor:'pointer',
+              display:'flex', alignItems:'center', gap:'6px', whiteSpace:'nowrap', marginBottom:'-1px'
             }}>
-              <span>{tab.icon}</span> {tab.label}
+              <i className={`ti ${tab.icon}`} style={{ fontSize:15 }} aria-hidden="true"></i> {tab.label}
             </button>
           ))}
         </nav>
@@ -345,57 +330,43 @@ export default function App() {
     </div>
   ) : (
     <div style={{
-      background:'white', padding:'14px 16px 10px',
-      borderBottom:'1px solid #F3F4F6',
+      background:'#FFFFFF', padding:'14px 16px', borderBottom:'0.5px solid #E5E5EA',
       position:'sticky', top:0, zIndex:50,
-      boxShadow:'0 1px 6px rgba(0,0,0,0.06)',
       display:'flex', alignItems:'center', justifyContent:'space-between'
     }}>
-      <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-        <span style={{ fontSize:'22px' }}>🥚</span>
-        <div>
-          <h1 style={{ margin:0, fontSize:'17px', fontWeight:800, color:'#111827', letterSpacing:'-0.02em' }}>ROKDIV</h1>
-          <p style={{ margin:0, fontSize:'11px', color:'#9CA3AF' }}>Farm Tracker</p>
-        </div>
+      <div>
+        {activeTab === 'dashboard' ? (
+          <>
+            <p style={{ margin:0, fontSize:'11px', color:'#8E8E93' }}>{getGreeting()}</p>
+            <h1 style={{ margin:0, fontSize:'16px', fontWeight:500, color:'#1C1C1E', letterSpacing:'-0.02em' }}>{greetName} · ROKDIV</h1>
+          </>
+        ) : (
+          <h1 style={{ margin:0, fontSize:'16px', fontWeight:500, color:'#1C1C1E', letterSpacing:'-0.02em' }}>ROKDIV</h1>
+        )}
       </div>
       <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-        <span style={{
-          background: isAdmin ? '#EEF1FF' : '#F0FDF4',
-          color:      isAdmin ? '#4F6EF7' : '#16A34A',
-          fontSize:'10px', fontWeight:700, padding:'3px 8px',
-          borderRadius:'20px', letterSpacing:'0.04em',
-          border:`1px solid ${isAdmin ? '#C7D2FE' : '#BBF7D0'}`
-        }}>
-          {isAdmin ? 'ADMIN' : 'STAFF'}
-        </span>
-        {!isAdmin && (
-          <button onClick={() => setShowChangePw(true)}
-            style={{ background:'#F3F4F6', border:'none', borderRadius:'8px',
-              padding:'7px 10px', cursor:'pointer', color:'#6B7280',
-              display:'flex', alignItems:'center', gap:'4px', fontSize:'12px', fontWeight:600 }}>
-            🔑 Set Password
-          </button>
-        )}
         {!isOnline && (
-          <span style={{
-            background:'#FEF3C7', color:'#92400E', fontSize:'11px',
-            fontWeight:600, padding:'3px 8px', borderRadius:'20px',
-            border:'1px solid #FDE68A'
-          }}>
-            Offline{offlineCount > 0 ? ` · ${offlineCount} queued` : ''}
+          <span style={{ background:'rgba(255,159,10,0.16)', color:'#FF9F0A', fontSize:'10px', fontWeight:500, padding:'3px 8px', borderRadius:'99px' }}>
+            Offline{offlineCount > 0 ? ` · ${offlineCount}` : ''}
           </span>
         )}
-        <button onClick={signOut} style={{
-          background:'#FEE2E2', border:'none', borderRadius:'8px',
-          padding:'7px 12px', cursor:'pointer', fontSize:'12px',
-          fontWeight:600, color:'#DC2626', display:'flex', alignItems:'center', gap:'4px'
+        <span style={{
+          fontSize:'10px', fontWeight:500, padding:'3px 8px', borderRadius:'99px',
+          color: isAdmin ? '#0A84FF' : '#34C759',
+          background: isAdmin ? 'rgba(10,132,255,0.12)' : 'rgba(52,199,89,0.12)'
         }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-          Logout
+          {isAdmin ? 'Admin' : 'Staff'}
+        </span>
+        {!isAdmin && (
+          <button onClick={() => setShowChangePw(true)} style={iconBtn}>
+            <i className="ti ti-key" style={{ fontSize:13 }} aria-hidden="true"></i>
+          </button>
+        )}
+        <div style={{ width:28, height:28, borderRadius:'50%', background:'#1C1C1E', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:500, color:'#FFFFFF' }}>
+          {initials}
+        </div>
+        <button onClick={signOut} style={{ ...iconBtn, color:'#FF453A' }}>
+          <i className="ti ti-logout" style={{ fontSize:13 }} aria-hidden="true"></i>
         </button>
       </div>
     </div>
@@ -404,11 +375,10 @@ export default function App() {
   // ── DESKTOP layout ──────────────────────────────────────────────────
   if (isDesktop) {
     return (
-      <div style={{ background:'#F0F2F5', minHeight:'100vh', fontFamily:"'Inter', -apple-system, sans-serif" }}>
+      <div style={{ background:'#F2F2F7', minHeight:'100vh', fontFamily:"-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" }}>
         {header}
         <div style={{ maxWidth:'1280px', margin:'0 auto', padding:'24px 32px' }}>
           {activeTab === 'dashboard' ? (
-            // Dashboard: 3-column grid on desktop
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'24px', alignItems:'start' }}>
               <div style={{ gridColumn:'1 / 3' }}>
                 <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} isDesktop={true} />
@@ -428,7 +398,6 @@ export default function App() {
               </div>
             </div>
           ) : (
-            // Other tabs: centered single column, max 720px
             <div style={{ maxWidth:'720px', margin:'0 auto' }}>
               {tabContent}
             </div>
@@ -442,16 +411,15 @@ export default function App() {
 
   // ── MOBILE layout ───────────────────────────────────────────────────
   return (
-    <div style={{ background:'#F0F2F5', minHeight:'100vh', maxWidth:'480px', margin:'0 auto', fontFamily:"'Inter', -apple-system, sans-serif" }}>
+    <div style={{ background:'#F2F2F7', minHeight:'100vh', maxWidth:'480px', margin:'0 auto', fontFamily:"-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" }}>
       {header}
       <div style={{ padding:'16px 14px', paddingBottom:'90px' }}>
         {tabContent}
       </div>
       <nav style={{
         position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)',
-        width:'100%', maxWidth:'480px', background:'white',
-        borderTop:'1px solid #F3F4F6', display:'flex',
-        boxShadow:'0 -2px 12px rgba(0,0,0,0.08)', zIndex:50
+        width:'100%', maxWidth:'480px', background:'#FFFFFF',
+        borderTop:'0.5px solid #E5E5EA', display:'flex', zIndex:50
       }}>
         {allTabs.map(tab => {
           const active = activeTab === tab.id
@@ -462,16 +430,13 @@ export default function App() {
                 cursor:'pointer', display:'flex', flexDirection:'column',
                 alignItems:'center', gap:'3px', position:'relative'
               }}>
-              <span style={{ fontSize: allTabs.length > 6 ? '16px' : '18px', lineHeight:1 }}>{tab.icon}</span>
+              <i className={`ti ${tab.icon}`} style={{ fontSize: allTabs.length > 6 ? 16 : 18, color: active ? '#1C1C1E' : '#8E8E93' }} aria-hidden="true"></i>
               <span style={{
-                fontSize:'9px', fontWeight: active ? 700 : 500,
-                color: active ? '#4F6EF7' : '#9CA3AF', letterSpacing:'0.02em'
+                fontSize:'9px', fontWeight: active ? 500 : 400,
+                color: active ? '#1C1C1E' : '#8E8E93'
               }}>{tab.label}</span>
               {active && (
-                <div style={{
-                  position:'absolute', bottom:0, width:'20px', height:'2.5px',
-                  background:'#4F6EF7', borderRadius:'2px 2px 0 0'
-                }} />
+                <div style={{ position:'absolute', bottom:0, width:'20px', height:'2px', background:'#1C1C1E', borderRadius:'2px 2px 0 0' }} />
               )}
             </button>
           )
@@ -481,4 +446,9 @@ export default function App() {
       {toast && <Toast message={toast.message} onDone={() => setToast(null)} />}
     </div>
   )
+}
+
+const iconBtn = {
+  width:30, height:30, borderRadius:8, background:'#F2F2F7', border:'none',
+  display:'flex', alignItems:'center', justifyContent:'center', color:'#8E8E93', cursor:'pointer',
 }

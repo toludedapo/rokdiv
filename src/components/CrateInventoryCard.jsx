@@ -1,5 +1,12 @@
 import React, { useState } from 'react'
-import { Package, PackageOpen, PackageCheck, Settings2, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+
+const SIGNAL = {
+  green:  '#34C759',
+  red:    '#FF453A',
+  orange: '#FF9F0A',
+  gray:   '#8E8E93',
+}
 
 export default function CrateInventoryCard({ inventory, cratesOut, loading, onSetTotalOwned }) {
   const [editing, setEditing] = useState(false)
@@ -18,68 +25,83 @@ export default function CrateInventoryCard({ inventory, cratesOut, loading, onSe
   }
 
   if (loading) return (
-    <div className="mx-4" style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#9CA3AF', fontSize: 13 }}>
-      <Loader2 size={14} className="animate-spin" /> Loading crates…
+    <div style={cardSurface}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 0', color: '#8E8E93', fontSize: 13 }}>
+        <Loader2 size={14} className="animate-spin" /> Loading crates…
+      </div>
     </div>
   )
 
   return (
-    <div className="mx-4" style={{ background: '#FFFFFF', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1.5px solid #F3F4F6', overflow: 'hidden' }}>
+    <div style={cardSurface}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: editing ? '1px solid #F3F4F6' : 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 30, height: 30, borderRadius: 8, background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Package size={14} style={{ color: '#D97706' }} />
-          </div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Crate Inventory</span>
-        </div>
-        <button onClick={() => { setEditing(e => !e); setInput(String(totalOwned)) }} style={{ width: 30, height: 30, borderRadius: 8, background: editing ? '#EEF1FF' : '#F3F4F6', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: editing ? '#4F6EF7' : '#9CA3AF', cursor: 'pointer', transition: 'all 0.15s' }}>
-          <Settings2 size={14} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: editing ? 12 : 16 }}>
+        <p style={label}>Crate inventory</p>
+        <button onClick={() => { setEditing(e => !e); setInput(String(totalOwned)) }}
+          style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: editing ? '#1C1C1E' : '#F2F2F7',
+            border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: editing ? '#FFFFFF' : '#8E8E93', cursor: 'pointer'
+          }}>
+          <i className="ti ti-adjustments" style={{ fontSize: 14 }} aria-hidden="true"></i>
         </button>
       </div>
 
       {/* Edit total */}
       {editing && (
-        <div className="slide-up" style={{ padding: '12px 18px', background: '#F8F9FB', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <label style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, whiteSpace: 'nowrap' }}>Total owned:</label>
+        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <label style={{ fontSize: 12, color: '#8E8E93', whiteSpace: 'nowrap' }}>Total owned</label>
           <input type="number" inputMode="numeric" value={input} onChange={e => setInput(e.target.value)}
-            className="field" style={{ fontSize: 15, flex: 1, padding: '8px 12px' }} autoFocus />
-          <button onClick={handleSave} disabled={saving} style={{ background: 'linear-gradient(135deg, #4F6EF7, #3B55E0)', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, opacity: saving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+            style={{
+              fontSize: 14, flex: 1, padding: '8px 10px', borderRadius: 10,
+              border: '1.5px solid #D1D1D6', outline: 'none'
+            }} autoFocus />
+          <button onClick={handleSave} disabled={saving}
+            style={{
+              background: '#1C1C1E', color: '#FFFFFF', border: 'none', borderRadius: 10,
+              padding: '8px 16px', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 4, opacity: saving ? 0.6 : 1, whiteSpace: 'nowrap'
+            }}>
             {saving && <Loader2 size={11} className="animate-spin" />} Save
           </button>
         </div>
       )}
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
+      {/* Stats — same stat typography as SummaryCards.jsx, no colored icon circles */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0 }}>
         {[
-          { icon: Package,      label: 'Total',       value: totalOwned, color: '#4F6EF7', bg: '#EEF1FF'  },
-          { icon: PackageCheck, label: 'In Farm',     value: inFarm,     color: '#059669', bg: '#ECFDF5'  },
-          { icon: PackageOpen,  label: 'With Buyers', value: cratesOut,  color: '#D97706', bg: '#FFFBEB' },
-        ].map(({ icon: Icon, label, value, color, bg }, idx) => (
-          <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '18px 8px', borderRight: idx < 2 ? '1px solid #F3F4F6' : 'none' }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8, boxShadow: `0 2px 6px ${color}25` }}>
-              <Icon size={16} style={{ color }} />
-            </div>
-            <span className="num" style={{ fontSize: 24, fontWeight: 800, color: '#111827', lineHeight: 1 }}>{value}</span>
-            <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 4 }}>{label}</span>
+          { label: 'Total',       value: totalOwned, color: null },
+          { label: 'In farm',     value: inFarm,     color: null },
+          { label: 'With buyers', value: cratesOut,  color: cratesOut > 0 ? SIGNAL.orange : null },
+        ].map(({ label: l, value, color }, idx) => (
+          <div key={l} style={{
+            display: 'flex', flexDirection: 'column',
+            paddingRight: idx < 2 ? 12 : 0,
+            borderRight: idx < 2 ? '0.5px solid #E5E5EA' : 'none'
+          }}>
+            <span style={{ ...statValue, fontSize: 24, color: color || '#1C1C1E' }}>{value}</span>
+            <span style={{ fontSize: 12, color: '#8E8E93', marginTop: 4 }}>{l}</span>
           </div>
         ))}
       </div>
 
       {/* Progress bar */}
       {totalOwned > 0 && cratesOut > 0 && (
-        <div style={{ padding: '10px 18px 14px', borderTop: '1px solid #F3F4F6' }}>
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '0.5px solid #E5E5EA' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 500 }}>With buyers</span>
-            <span className="num" style={{ fontSize: 10, color: '#D97706', fontWeight: 700 }}>{pctOut}%</span>
+            <span style={{ fontSize: 12, color: '#8E8E93' }}>With buyers</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: pctOut > 70 ? SIGNAL.red : SIGNAL.orange }}>{pctOut}%</span>
           </div>
-          <div className="progress-track">
-            <div className={`progress-fill ${pctOut > 70 ? 'progress-fill-warn' : ''}`} style={{ width: `${pctOut}%` }} />
+          <div style={{ height: 4, background: '#E5E5EA', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', width: `${pctOut}%`, borderRadius: 4,
+              background: pctOut > 70 ? SIGNAL.red : SIGNAL.orange
+            }} />
           </div>
           {inFarm === 0 && (
-            <p style={{ fontSize: 11, color: '#D97706', textAlign: 'center', marginTop: 8, fontWeight: 600 }}>
+            <p style={{ fontSize: 12, color: SIGNAL.red, textAlign: 'center', marginTop: 8 }}>
               All crates are currently with buyers
             </p>
           )}
@@ -87,4 +109,16 @@ export default function CrateInventoryCard({ inventory, cratesOut, loading, onSe
       )}
     </div>
   )
+}
+
+const cardSurface = {
+  background: '#FFFFFF', borderRadius: 16, padding: 16,
+  border: '1.5px solid #D1D1D6', boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+}
+const label = {
+  margin: 0, fontSize: 12, fontWeight: 500, color: '#8E8E93',
+}
+const statValue = {
+  margin: 0, fontWeight: 500, lineHeight: 1, letterSpacing: '-0.02em',
+  fontVariantNumeric: 'tabular-nums',
 }

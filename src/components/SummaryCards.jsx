@@ -315,7 +315,7 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
           {Array.from({ length: stockBarSegments }, (_, i) => (
             <div key={i} style={{
               flex:1, borderRadius: i===0 ? '2px 0 0 2px' : i===stockBarSegments-1 ? '0 2px 2px 0' : '0',
-              background: i < filledSegments ? SIGNAL[stockSignal] : 'rgba(255,255,255,0.12)'
+              background: i < filledSegments ? SIGNAL[stockSignal] : 'rgba(255,255,255,0.22)'
             }} />
           ))}
         </div>
@@ -347,7 +347,7 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
         <div style={{ ...cardSurface, marginBottom: isDesktop?'14px':'10px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>
             <p style={label}>{netProfit>=0?'Net profit':'Net loss'} (month)</p>
-            <p style={{ ...statValue, fontSize: isDesktop?'26px':'20px', color: netProfit>=0 ? '#1C1C1E' : SIGNAL.red }}>{fmt(Math.abs(netProfit))}</p>
+            <p style={{ ...statValue, fontSize: isDesktop?'30px':'24px', color: netProfit>=0 ? '#1C1C1E' : SIGNAL.red }}>{fmt(Math.abs(netProfit))}</p>
           </div>
           <p style={sub}>after {fmt(monthExpenses)} expenses</p>
         </div>
@@ -355,7 +355,7 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
         <div style={{ ...cardSurface, marginBottom: isDesktop?'14px':'10px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>
             <p style={label}>Collected this month</p>
-            <p style={{ ...statValue, fontSize: isDesktop?'26px':'20px' }}>
+            <p style={{ ...statValue, fontSize: isDesktop?'30px':'24px' }}>
               {monthCollectedCrates.toLocaleString()}
               <span style={{ fontSize:'14px', fontWeight:400, color:'#8E8E93', marginLeft:'4px' }}>crates</span>
             </p>
@@ -465,8 +465,10 @@ export default function SummaryCards({ collections, sales, expenses = [], paymen
 function qaBtn(primary) {
   return {
     display:'flex', alignItems:'center', justifyContent:'center', gap:'8px',
-    padding:'14px 8px', background: primary ? '#0D0D0D' : '#F2F2F7',
-    border:'none', borderRadius:'14px', cursor:'pointer',
+    padding:'14px 8px', background: primary ? '#0D0D0D' : '#FFFFFF',
+    border: primary ? 'none' : '1.5px solid #D1D1D6',
+    boxShadow: primary ? 'none' : '0 2px 6px rgba(0,0,0,0.06)',
+    borderRadius:'14px', cursor:'pointer',
   }
 }
 
