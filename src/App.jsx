@@ -398,7 +398,7 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div style={{ maxWidth:'720px', margin:'0 auto' }}>
+            <div style={{ maxWidth:'960px', margin:'0 auto' }}>
               {tabContent}
             </div>
           )}
