@@ -18,7 +18,7 @@ function buildWaLink(number, message = '') {
   return `https://wa.me/${normalized}${message ? `?text=${encodeURIComponent(message)}` : ''}`
 }
 
-export default function CustomerManager({ customers, onAdd, onUpdate, onDelete, isAdmin }) {
+export default function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, isAdmin }) {
   const [search, setSearch]     = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId]     = useState(null)

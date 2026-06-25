@@ -8,7 +8,7 @@ const SIGNAL = {
   gray:   '#8E8E93',
 }
 
-export default function CrateInventoryCard({ inventory, cratesOut, loading, onSetTotalOwned }) {
+export default function CrateInventoryCard({ inventory, cratesOut = 0, loading, onSetTotalOwned }) {
   const [editing, setEditing] = useState(false)
   const [input,   setInput]   = useState('')
   const [saving,  setSaving]  = useState(false)

@@ -14,7 +14,7 @@ function agingLabel(date) {
 }
 
 export default function CreditTracker({
-  sales, onMarkPaid, payments = [], onAddPayment, onDeletePayment, onReturnCrates, isAdmin, customers = []
+  sales = [], onMarkPaid, payments = [], onAddPayment, onDeletePayment, onReturnCrates, isAdmin, customers = []
 }) {
   const [expandedCustomer, setExpandedCustomer] = useState(null)
   const [partialCustomer, setPartialCustomer]   = useState(null)

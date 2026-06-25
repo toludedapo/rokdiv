@@ -11,7 +11,7 @@ function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
-export default function HistoryLog({ sales, collections, payments, onClearAll, showToast, isAdmin }) {
+export default function HistoryLog({ sales = [], collections = [], payments = [], onClearAll, showToast, isAdmin }) {
   const [tab, setTab] = useState('sales')
 
   const today = new Date().toISOString().slice(0, 10)
