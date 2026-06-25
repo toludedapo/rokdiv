@@ -471,7 +471,8 @@ function qaBtn(primary) {
 }
 
 const cardSurface = {
-  background:'#F2F2F7', borderRadius:'16px', padding:'14px',
+  background:'#FFFFFF', borderRadius:'16px', padding:'14px',
+  border:'1px solid #E5E5EA', boxShadow:'0 1px 3px rgba(0,0,0,0.04)',
 }
 const statValue = {
   margin:'0 0 2px', fontSize:'24px', fontWeight:500, color:'#1C1C1E',
