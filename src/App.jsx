@@ -183,9 +183,13 @@ export default function App() {
     (s, sale) => s + (parseInt(sale.crates_loaned || 0) - parseInt(sale.crates_returned || 0)), 0
   )
 
-  const firstName = (user?.user_metadata?.full_name || user?.email || '').split(/[\s@]/)[0]
-  const greetName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : (isAdmin ? 'Admin' : 'there')
-  const initials = (firstName || 'R').slice(0, 2).toUpperCase()
+  const metaName = user?.user_metadata?.full_name
+  const greetName = metaName
+    ? metaName.split(' ')[0]
+    : (isAdmin ? 'Admin' : 'there')
+  const initials = metaName
+    ? metaName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    : (isAdmin ? 'A' : 'S')
 
   const tabContent = (
     <>
@@ -272,10 +276,8 @@ export default function App() {
   // ── Header (shared, new system) ──────────────────────────────────────
   const header = isDesktop ? (
     <div style={{ background:'#FFFFFF', borderBottom:'1px solid #E5E5EA', position:'sticky', top:0, zIndex:50 }}>
-      <div style={{
-        display:'flex', alignItems:'center', justifyContent:'space-between',
-        padding:'14px 32px', borderBottom:'0.5px solid #E5E5EA'
-      }}>
+      <div style={{ maxWidth:'1280px', margin:'0 auto', padding:'14px 32px', borderBottom:'0.5px solid #E5E5EA',
+        display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
           {activeTab === 'dashboard' ? (
             <>
