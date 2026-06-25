@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
-import { Plus, ShoppingCart, ChevronDown, ChevronUp, Trash2, Loader2 } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, Trash2, Loader2 } from 'lucide-react'
 import { todayISO, fmtDate, fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
+
+const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', gray: '#8E8E93' }
+const TINT = { green: 'rgba(52,199,89,0.12)', red: 'rgba(255,69,58,0.12)', orange: 'rgba(255,159,10,0.12)' }
 
 export default function SalesForm({ sales, cratesInFarm, customers = [], onSave, onDelete, onMarkPaid, onReturnCrates, onQueueOffline, showToast }) {
   const [open, setOpen] = useState(true)
@@ -38,7 +41,7 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
       if (onQueueOffline) {
         onQueueOffline(payload)
         setForm({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', payment_mode: 'Cash', crates_loaned: '', notes: '' })
-        showToast('Saved offline 💾')
+        showToast('Saved offline')
       } else { setError(e.message) }
     } finally { setSaving(false) }
   }
@@ -53,7 +56,7 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
     setReturningId(null)
     setReturnQty('')
     setReturning(false)
-    showToast(`${qty} crate${qty !== 1 ? 's' : ''} returned ✓`)
+    showToast(`${qty} crate${qty !== 1 ? 's' : ''} returned`)
   }
 
   const total    = (Number(form.crates)||0)*CRATE_SIZE + (Number(form.singles)||0)
@@ -64,25 +67,22 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
   })
 
   return (
-    <div className="mx-4" style={{ background: '#FFFFFF', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', border: '1.5px solid #F3F4F6', overflow: 'hidden' }}>
+    <div style={cardSurface}>
 
-      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: open ? 14 : 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 30, height: 30, borderRadius: 8, background: '#EEF1FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ShoppingCart size={13} style={{ color: '#4F6EF7' }} />
-          </div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>Sales Log</span>
-          <span style={{ fontSize: 11, background: '#F3F4F6', borderRadius: 99, padding: '2px 8px', color: '#6B7280', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>{sales.length}</span>
+          <p style={label}>Sales log</p>
+          <span style={countPill}>{sales.length}</span>
         </div>
-        {open ? <ChevronUp size={14} style={{ color: '#9CA3AF' }} /> : <ChevronDown size={14} style={{ color: '#9CA3AF' }} />}
+        {open ? <ChevronUp size={14} style={{ color: '#8E8E93' }} /> : <ChevronDown size={14} style={{ color: '#8E8E93' }} />}
       </button>
 
       {open && (
-        <div className="slide-up" style={{ padding: '0 18px 18px', borderTop: '1px solid #F3F4F6' }}>
-          <div style={{ paddingTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div style={{ gridColumn: 'span 2', position: 'relative' }}>
-              <label className="label">Customer</label>
-              <input type="text" className="field" placeholder="Type to search or add new..."
+              <label style={fieldLabel}>Customer</label>
+              <input type="text" style={fieldInput} placeholder="Type to search or add new…"
                 value={custSearch || form.customer_name}
                 onChange={e => {
                   setCustSearch(e.target.value)
@@ -91,124 +91,124 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
                 }}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 onFocus={() => setShowSuggestions(true)}
-                style={{ fontSize: 16 }} />
+              />
               {showSuggestions && suggestions.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1.5px solid #E5E7EB', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#FFFFFF', border: '1.5px solid #D1D1D6', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 100, overflow: 'hidden' }}>
                   {suggestions.map(c => (
                     <button key={c.id} onMouseDown={() => {
                       set('customer_name', c.name)
                       setCustSearch('')
                       setShowSuggestions(false)
-                    }} style={{ width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #F3F4F6' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>{c.name}</span>
-                      {c.whatsapp && <span style={{ fontSize: '11px', color: '#9CA3AF' }}>📱</span>}
+                    }} style={{ width: '100%', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '0.5px solid #E5E5EA' }}>
+                      <span style={{ fontSize: '14px', color: '#1C1C1E' }}>{c.name}</span>
                     </button>
                   ))}
                 </div>
               )}
             </div>
             <div>
-              <label className="label">Date</label>
-              <input type="date" className="field" value={form.date} onChange={e => set('date', e.target.value)} style={{ fontSize: 16 }} />
+              <label style={fieldLabel}>Date</label>
+              <input type="date" style={fieldInput} value={form.date} onChange={e => set('date', e.target.value)} />
             </div>
             <div>
-              <label className="label">Payment</label>
-              <select className="field" value={form.payment_status} onChange={e => set('payment_status', e.target.value)} style={{ fontSize: 16 }}>
+              <label style={fieldLabel}>Payment</label>
+              <select style={fieldInput} value={form.payment_status} onChange={e => set('payment_status', e.target.value)}>
                 <option value="Paid">Paid</option>
                 <option value="Credit">Credit</option>
               </select>
             </div>
             {form.payment_status === 'Paid' && (
               <div style={{ gridColumn: 'span 2' }}>
-                <label className="label">Payment Mode</label>
+                <label style={fieldLabel}>Payment mode</label>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {[
-                    { key: 'Cash',     icon: '💵' },
-                    { key: 'Transfer', icon: '📲' },
-                    { key: 'POS',      icon: '🖥️' },
-                  ].map(({ key, icon }) => (
+                  {['Cash', 'Transfer', 'POS'].map(key => (
                     <button key={key} type="button"
                       onClick={() => set('payment_mode', key)}
                       style={{
                         flex: 1, padding: '9px 0', borderRadius: 10,
-                        fontSize: 12, fontWeight: 700,
-                        border: `1.5px solid ${form.payment_mode === key ? '#4F6EF7' : '#E5E7EB'}`,
-                        background: form.payment_mode === key ? '#EEF1FF' : '#FAFAFA',
-                        color: form.payment_mode === key ? '#4F6EF7' : '#6B7280',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center',
-                        justifyContent: 'center', gap: 5
+                        fontSize: 12, fontWeight: 500,
+                        border: `1.5px solid ${form.payment_mode === key ? '#1C1C1E' : '#D1D1D6'}`,
+                        background: form.payment_mode === key ? '#1C1C1E' : '#FFFFFF',
+                        color: form.payment_mode === key ? '#FFFFFF' : '#8E8E93',
+                        cursor: 'pointer',
                       }}>
-                      {icon} {key}
+                      {key}
                     </button>
                   ))}
                 </div>
               </div>
             )}
             <div>
-              <label className="label">Crates Sold</label>
-              <input type="number" inputMode="numeric" className="field" placeholder="0" value={form.crates} onChange={e => set('crates', e.target.value)} style={{ fontSize: 16 }} />
+              <label style={fieldLabel}>Crates sold</label>
+              <input type="number" inputMode="numeric" style={fieldInput} placeholder="0" value={form.crates} onChange={e => set('crates', e.target.value)} />
             </div>
             <div>
-              <label className="label">Singles</label>
-              <input type="number" inputMode="numeric" className="field" placeholder="0" value={form.singles} onChange={e => set('singles', e.target.value)} style={{ fontSize: 16 }} />
+              <label style={fieldLabel}>Singles</label>
+              <input type="number" inputMode="numeric" style={fieldInput} placeholder="0" value={form.singles} onChange={e => set('singles', e.target.value)} />
             </div>
             <div>
-              <label className="label">Amount (₦)</label>
-              <input type="number" inputMode="decimal" className="field" placeholder="0" value={form.amount} onChange={e => set('amount', e.target.value)} style={{ fontSize: 16 }} />
+              <label style={fieldLabel}>Amount (₦)</label>
+              <input type="number" inputMode="decimal" style={fieldInput} placeholder="0" value={form.amount} onChange={e => set('amount', e.target.value)} />
             </div>
             <div>
-              <label className="label">Crates Loaned <span style={{ color: '#D97706', fontWeight: 400, textTransform: 'none' }}>({cratesInFarm} avail)</span></label>
-              <input type="number" inputMode="numeric" className="field" placeholder="0" min="0" max={cratesInFarm} value={form.crates_loaned} onChange={e => set('crates_loaned', e.target.value)} style={{ fontSize: 16 }} />
+              <label style={fieldLabel}>Crates loaned <span style={{ color: SIGNAL.orange }}>({cratesInFarm} avail)</span></label>
+              <input type="number" inputMode="numeric" style={fieldInput} placeholder="0" min="0" max={cratesInFarm} value={form.crates_loaned} onChange={e => set('crates_loaned', e.target.value)} />
             </div>
           </div>
 
-          {error && <div style={{ marginTop: 10, background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: '9px 13px', fontSize: 12, color: '#DC2626' }}>{error}</div>}
+          {error && <div style={{ marginTop: 10, background: TINT.red, borderRadius: 10, padding: '9px 13px', fontSize: 12, color: SIGNAL.red }}>{error}</div>}
 
           {total > 0 && form.amount && (
-            <p style={{ marginTop: 8, fontSize: 12, color: '#6B7280' }}>
-              {total.toLocaleString()} eggs · <span className="num" style={{ color: '#D97706', fontWeight: 700 }}>{fmtNaira(form.amount)}</span>
-              {Number(form.crates_loaned) > 0 && <> · <span style={{ color: '#4F6EF7', fontWeight: 600 }}>{form.crates_loaned} crates loaned</span></>}
+            <p style={{ marginTop: 8, fontSize: 12, color: '#8E8E93' }}>
+              {total.toLocaleString()} eggs · <span style={{ color: '#1C1C1E', fontWeight: 500 }}>{fmtNaira(form.amount)}</span>
+              {Number(form.crates_loaned) > 0 && <> · <span style={{ color: SIGNAL.orange, fontWeight: 500 }}>{form.crates_loaned} crates loaned</span></>}
             </p>
           )}
 
-          <button onClick={handleSubmit} disabled={saving} className="btn-primary" style={{ marginTop: 12 }}>
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Record Sale
+          <button onClick={handleSubmit} disabled={saving} style={primaryBtn}>
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Record sale
           </button>
 
           {sales.length > 0 && (
             <>
-              <div style={{ display: 'flex', gap: 6, marginTop: 14 }}>
+              <div style={{ display: 'flex', gap: 6, marginTop: 16 }}>
                 {['All','Paid','Credit'].map(f => (
-                  <button key={f} onClick={() => setFilter(f)} style={{ fontSize: 11, fontWeight: 700, padding: '6px 14px', borderRadius: 99, border: filter===f ? 'none' : '1.5px solid #E5E7EB', background: filter===f ? 'linear-gradient(135deg,#4F6EF7,#3B55E0)' : '#F9FAFB', color: filter===f ? '#fff' : '#6B7280', cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <button key={f} onClick={() => setFilter(f)} style={{
+                    fontSize: 12, fontWeight: 500, padding: '6px 14px', borderRadius: 99,
+                    border: 'none',
+                    background: filter===f ? '#1C1C1E' : '#F2F2F7',
+                    color: filter===f ? '#FFFFFF' : '#8E8E93', cursor: 'pointer',
+                  }}>
                     {f}
                   </button>
                 ))}
               </div>
               <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filtered.slice(0,20).map(s => (
-                  <div key={s.id} style={{ background: '#F8F9FB', border: '1.5px solid #F3F4F6', borderRadius: 12, padding: '12px 14px' }}>
+                  <div key={s.id} style={{ background: '#F2F2F7', borderRadius: 12, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{s.customer_name}</span>
-                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
-                            background: s.payment_status==='Paid' ? '#ECFDF5' : '#FEF2F2',
-                            color: s.payment_status==='Paid' ? '#059669' : '#DC2626',
-                            border: `1px solid ${s.payment_status==='Paid' ? '#A7F3D0' : '#FECACA'}` }}>
-                            {s.payment_status==='Paid' ? '🟢' : '🔴'} {s.payment_status}{s.payment_mode ? ` · ${s.payment_mode}` : ''}
+                          <span style={{ fontSize: 14, color: '#1C1C1E' }}>{s.customer_name}</span>
+                          <span style={{
+                            fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 99,
+                            background: s.payment_status==='Paid' ? TINT.green : TINT.red,
+                            color: s.payment_status==='Paid' ? SIGNAL.green : SIGNAL.red,
+                          }}>
+                            {s.payment_status}{s.payment_mode ? ` · ${s.payment_mode}` : ''}
                           </span>
-                          {s.isOffline && <span className="badge-offline">💾 Offline</span>}
+                          {s.isOffline && <span style={offlinePill}>Offline</span>}
                           {(s.crates_loaned-(s.crates_returned||0)) > 0 && (
-                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
+                            <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 99, background: TINT.orange, color: SIGNAL.orange }}>
                               {s.crates_loaned-(s.crates_returned||0)} crates out
                             </span>
                           )}
                         </div>
-                        <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>{fmtDate(s.date)} · {(s.crates*CRATE_SIZE+s.singles).toLocaleString()} eggs</p>
+                        <p style={{ fontSize: 12, color: '#8E8E93', marginTop: 3 }}>{fmtDate(s.date)} · {(s.crates*CRATE_SIZE+s.singles).toLocaleString()} eggs</p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <span className="num" style={{ fontSize: 13, fontWeight: 700, color: '#D97706' }}>{fmtNaira(s.amount)}</span>
-                        {!s.isOffline && <button onClick={() => onDelete(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 3 }}><Trash2 size={13} /></button>}
+                        <span style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E' }}>{fmtNaira(s.amount)}</span>
+                        {!s.isOffline && <button onClick={() => onDelete(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C7C7CC', padding: 3 }}><Trash2 size={13} /></button>}
                       </div>
                     </div>
 
@@ -221,33 +221,33 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
                               placeholder={`Max ${s.crates_loaned - (s.crates_returned || 0)}`}
                               value={returnQty}
                               onChange={e => setReturnQty(e.target.value)}
-                              style={{ width: 90, padding: '5px 8px', borderRadius: 8, border: '1.5px solid #4F6EF7', fontSize: 13, outline: 'none' }}
+                              style={{ width: 90, padding: '5px 8px', borderRadius: 8, border: '1.5px solid #1C1C1E', fontSize: 13, outline: 'none', background: '#FFFFFF' }}
                               autoFocus
                             />
                             <button
                               onClick={() => handleReturn(s)}
                               disabled={returning}
-                              style={{ padding: '5px 10px', borderRadius: 8, background: '#4F6EF7', color: 'white', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                              {returning ? '...' : 'Confirm'}
+                              style={{ padding: '5px 10px', borderRadius: 8, background: '#1C1C1E', color: '#FFFFFF', border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                              {returning ? '…' : 'Confirm'}
                             </button>
                             <button
                               onClick={() => { setReturningId(null); setReturnQty('') }}
-                              style={{ padding: '5px 8px', borderRadius: 8, background: '#F3F4F6', color: '#6B7280', border: 'none', fontSize: 12, cursor: 'pointer' }}>
+                              style={{ padding: '5px 8px', borderRadius: 8, background: '#FFFFFF', color: '#8E8E93', border: '1.5px solid #D1D1D6', fontSize: 12, cursor: 'pointer' }}>
                               Cancel
                             </button>
                           </div>
                         ) : (
                           <button
                             onClick={() => { setReturningId(s.id); setReturnQty('') }}
-                            style={{ fontSize: 11, color: '#D97706', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                            📦 Record Crate Return ({s.crates_loaned - (s.crates_returned || 0)} out)
+                            style={{ fontSize: 12, color: SIGNAL.orange, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                            Record crate return ({s.crates_loaned - (s.crates_returned || 0)} out)
                           </button>
                         )}
                       </div>
                     )}
                   </div>
                 ))}
-                {filtered.length > 20 && <p style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center' }}>+{filtered.length-20} more</p>}
+                {filtered.length > 20 && <p style={{ fontSize: 12, color: '#8E8E93', textAlign: 'center' }}>+{filtered.length-20} more</p>}
               </div>
             </>
           )}
@@ -256,3 +256,23 @@ export default function SalesForm({ sales, cratesInFarm, customers = [], onSave,
     </div>
   )
 }
+
+const cardSurface = {
+  background: '#FFFFFF', borderRadius: 16, padding: 16,
+  border: '1.5px solid #D1D1D6', boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+}
+const label = { margin: 0, fontSize: 12, fontWeight: 500, color: '#8E8E93' }
+const countPill = { fontSize: 11, background: '#F2F2F7', borderRadius: 99, padding: '2px 8px', color: '#8E8E93', fontWeight: 500 }
+const fieldLabel = { display: 'block', fontSize: 12, color: '#8E8E93', marginBottom: 4 }
+const fieldInput = {
+  width: '100%', padding: '10px 12px', borderRadius: 10,
+  border: '1.5px solid #D1D1D6', fontSize: 16, color: '#1C1C1E',
+  outline: 'none', boxSizing: 'border-box', background: '#FFFFFF',
+}
+const primaryBtn = {
+  width: '100%', marginTop: 12, padding: '13px', borderRadius: 12,
+  background: '#0D0D0D', color: '#FFFFFF', border: 'none',
+  fontSize: 14, fontWeight: 500, cursor: 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+}
+const offlinePill = { fontSize: 11, background: '#F2F2F7', color: '#8E8E93', borderRadius: 99, padding: '1px 7px' }
