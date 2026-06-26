@@ -5,7 +5,7 @@ import { todayISO, fmtDate, fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
 const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', gray: '#8E8E93' }
 const TINT = { green: 'rgba(52,199,89,0.12)', red: 'rgba(255,69,58,0.12)', orange: 'rgba(255,159,10,0.12)' }
 
-export default function SalesForm({ sales, cratesInFarm, customers = [], onSave, onDelete, onMarkPaid, onReturnCrates, onQueueOffline, showToast }) {
+export default function SalesForm({ sales = [], cratesInFarm, customers = [], onSave, onDelete, onMarkPaid, onReturnCrates, onQueueOffline, showToast }) {
   const [open, setOpen] = useState(true)
   const [form, setForm] = useState({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', payment_mode: 'Cash', crates_loaned: '', notes: '' })
   const [error,  setError]  = useState('')
