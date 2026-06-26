@@ -249,3 +249,61 @@ export function calcCollectionStreak(collections, now = new Date()) {
   }
   return count
 }
+
+
+// ── WhatsApp number normalization (used in CustomerManager + CreditTracker) ─
+export function normalizeWhatsApp(raw) {
+  if (!raw) return null
+  const digits = raw.replace(/\D/g, '')
+  if (digits.startsWith('234')) return digits
+  if (digits.startsWith('0') && digits.length === 11) return '234' + digits.slice(1)
+  if (digits.length === 10) return '234' + digits
+  return digits
+}
+
+export function buildWaLink(number, message = '') {
+  const normalized = normalizeWhatsApp(number)
+  if (!normalized) return null
+  return `https://wa.me/${normalized}${message ? `?text=${encodeURIComponent(message)}` : ''}`
+}
+
+// ── CSV row-shaping (pure data logic, separated from browser download mechanics) ─
+// The actual file-download trigger (Blob, createObjectURL, click()) lives in
+// exportUtils.js and can't be unit tested since it requires a real browser DOM.
+// This function is the part that decides WHAT data goes in the CSV — that's
+// the part worth testing, since it's where the "Amount Paid" / "Balance"
+// calculation bug could hide.
+export function buildSalesCSVRows(sales, payments = []) {
+  const paidMap = buildPaidBySaleMap(payments)
+  return sales.map(s => {
+    const amountPaid = s.payment_status === 'Paid'
+      ? parseFloat(s.amount || 0)
+      : (paidMap[s.id] || 0)
+    const balance = Math.max(0, parseFloat(s.amount || 0) - amountPaid)
+    return {
+      'Date':             s.date,
+      'Customer':         s.customer_name,
+      'Crates Sold':      s.crates,
+      'Single Eggs':      s.singles,
+      'Total Eggs':       s.crates * CRATE_SIZE + s.singles,
+      'Amount (₦)':       s.amount,
+      'Amount Paid (₦)':  amountPaid,
+      'Balance (₦)':      balance,
+      'Payment Status':   s.payment_status,
+      'Paid At':          s.paid_at || '',
+      'Crates Loaned':    s.crates_loaned || 0,
+      'Crates Returned':  s.crates_returned || 0,
+      'Notes':            s.notes || '',
+    }
+  })
+}
+
+export function buildCollectionsCSVRows(collections) {
+  return collections.map(c => ({
+    'Date':        c.date,
+    'Crates':      c.crates,
+    'Single Eggs': c.singles,
+    'Total Eggs':  c.crates * CRATE_SIZE + c.singles,
+    'Notes':       c.notes || '',
+  }))
+}

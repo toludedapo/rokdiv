@@ -1,4 +1,4 @@
-import { CRATE_SIZE } from './dateUtils.js'
+import { buildSalesCSVRows, buildCollectionsCSVRows } from './lib/calculations.js'
 
 function toCSV(rows, filename) {
   if (!rows.length) { alert('No data to export.'); return }
@@ -16,47 +16,17 @@ function toCSV(rows, filename) {
   document.body.removeChild(a); URL.revokeObjectURL(url)
 }
 
+// Row-building logic now lives in lib/calculations.js (buildSalesCSVRows,
+// buildCollectionsCSVRows) where it's unit tested. This file only handles
+// the browser-only download mechanics, which can't be unit tested.
 export function exportSalesCSV(sales, payments = []) {
   const today = new Date().toISOString().slice(0,10)
-
-  // Build payment map: sale_id → total paid
-  const paidMap = {}
-  payments.forEach(p => {
-    paidMap[p.sale_id] = (paidMap[p.sale_id] || 0) + parseFloat(p.amount || 0)
-  })
-
-  const rows = sales.map(s => {
-    const amountPaid = s.payment_status === 'Paid'
-      ? parseFloat(s.amount || 0)
-      : (paidMap[s.id] || 0)
-    const balance = Math.max(0, parseFloat(s.amount || 0) - amountPaid)
-    return {
-      'Date':             s.date,
-      'Customer':         s.customer_name,
-      'Crates Sold':      s.crates,
-      'Single Eggs':      s.singles,
-      'Total Eggs':       s.crates * CRATE_SIZE + s.singles,
-      'Amount (₦)':       s.amount,
-      'Amount Paid (₦)':  amountPaid,
-      'Balance (₦)':      balance,
-      'Payment Status':   s.payment_status,
-      'Paid At':          s.paid_at || '',
-      'Crates Loaned':    s.crates_loaned || 0,
-      'Crates Returned':  s.crates_returned || 0,
-      'Notes':            s.notes || '',
-    }
-  })
+  const rows = buildSalesCSVRows(sales, payments)
   toCSV(rows, `ROKDIV-sales-${today}.csv`)
 }
 
 export function exportCollectionsCSV(collections) {
   const today = new Date().toISOString().slice(0,10)
-  const rows = collections.map(c => ({
-    'Date':        c.date,
-    'Crates':      c.crates,
-    'Single Eggs': c.singles,
-    'Total Eggs':  c.crates * CRATE_SIZE + c.singles,
-    'Notes':       c.notes || '',
-  }))
+  const rows = buildCollectionsCSVRows(collections)
   toCSV(rows, `ROKDIV-collections-${today}.csv`)
 }

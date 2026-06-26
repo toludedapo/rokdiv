@@ -1,22 +1,8 @@
 import { useState, useMemo } from 'react'
 import { Plus, Loader2, Pencil, Trash2, X, Check, Search } from 'lucide-react'
+import { normalizeWhatsApp, buildWaLink } from '../lib/calculations'
 
 const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', gray: '#8E8E93' }
-
-function normalizeWhatsApp(raw) {
-  if (!raw) return null
-  const digits = raw.replace(/\D/g, '')
-  if (digits.startsWith('234')) return digits
-  if (digits.startsWith('0') && digits.length === 11) return '234' + digits.slice(1)
-  if (digits.length === 10) return '234' + digits
-  return digits
-}
-
-function buildWaLink(number, message = '') {
-  const normalized = normalizeWhatsApp(number)
-  if (!normalized) return null
-  return `https://wa.me/${normalized}${message ? `?text=${encodeURIComponent(message)}` : ''}`
-}
 
 export default function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, isAdmin }) {
   const [search, setSearch]     = useState('')
