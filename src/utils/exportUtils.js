@@ -1,4 +1,4 @@
-import { buildSalesCSVRows, buildCollectionsCSVRows } from './lib/calculations.js'
+import { buildSalesCSVRows, buildCollectionsCSVRows } from '../lib/calculations.js'
 
 function toCSV(rows, filename) {
   if (!rows.length) { alert('No data to export.'); return }
