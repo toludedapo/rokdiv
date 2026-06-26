@@ -157,7 +157,7 @@ function SkeletonHero() {
   )
 }
 
-export default function SummaryCards({ collections, sales, expenses = [], payments = [], isDesktop = false, loading = false }) {
+export default function SummaryCards({ collections = [], sales = [], expenses = [], payments = [], isDesktop = false, loading = false }) {
   const now = new Date()
 
   const runRate = useMemo(() => {
