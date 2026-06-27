@@ -1,4 +1,15 @@
 import { useMemo, useState } from 'react'
+import {
+  eggsFromRecord, CRATE_SIZE,
+  calcRevenue, calcRevenueTrend,
+  calcTotalCollectedEggs, calcTotalSoldEggs, calcTotalSoldCrates,
+  calcInStockEggs, calcInStockCrates, calcInStockSingles,
+  calcRunRate, calcDaysLeft, stockSignalFor, stockLabelFor,
+  calcOutstanding, buildPaidBySaleMap,
+  calcTotalExpenses, calcNetProfit,
+  calcTopBuyers, calcTopDebts, calcCollectionStreak,
+  filterByMonth,
+} from '../lib/calculations'
 
 const NAIRA = String.fromCharCode(0x20A6)
 const fmt = (n) => NAIRA + Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0 })
@@ -16,10 +27,6 @@ const TINT = {
   red:    'rgba(255,69,58,0.16)',
   orange: 'rgba(255,159,10,0.16)',
   blue:   'rgba(10,132,255,0.16)',
-}
-
-function eggsFromRecord(r) {
-  return (parseInt(r.crates || 0) * 30) + parseInt(r.singles || r.loose_eggs || 0)
 }
 
 // ── Collection Trend Chart ───────────────────────────────────────────────────
@@ -159,112 +166,79 @@ function SkeletonHero() {
 
 export default function SummaryCards({ collections = [], sales = [], expenses = [], payments = [], isDesktop = false, loading = false }) {
   const now = new Date()
+  const [buyersPeriod, setBuyersPeriod] = useState('month') // 'month' | '3m' | 'all' | 'custom'
+  const [buyersFrom, setBuyersFrom] = useState('')
+  const [buyersTo, setBuyersTo] = useState(() => new Date().toISOString().slice(0, 10))
 
-  const runRate = useMemo(() => {
-    const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() - 7)
-    const recent = sales.filter(s => new Date(s.date) >= cutoff)
-    if (!recent.length) return null
-    return recent.reduce((sum, s) => sum + eggsFromRecord(s), 0) / 7
-  }, [sales])
+  // ── All business math now lives in src/lib/calculations.js — these are
+  // thin wrappers that just feed the live data in. The logic itself is
+  // unit-tested there, so this component only has to handle rendering.
+  const runRate = useMemo(() => calcRunRate(sales, now), [sales])
 
-  const totalCollected = useMemo(() => collections.reduce((s,c) => s + eggsFromRecord(c), 0), [collections])
-  const totalSoldEggs  = useMemo(() => sales.reduce((s,sale) => s + eggsFromRecord(sale), 0), [sales])
-  const totalSoldCrates = useMemo(() => sales.reduce((s,sale) => s + parseInt(sale.crates||0), 0), [sales])
-  const inStockEggs    = Math.max(0, totalCollected - totalSoldEggs)
-  const inStockCrates  = Math.floor(inStockEggs / 30)
-  const inStockSingles = inStockEggs % 30
+  const totalCollected = useMemo(() => calcTotalCollectedEggs(collections), [collections])
+  const totalSoldEggs  = useMemo(() => calcTotalSoldEggs(sales), [sales])
+  const totalSoldCrates = useMemo(() => calcTotalSoldCrates(sales), [sales])
+  const inStockEggs    = useMemo(() => calcInStockEggs(collections, sales), [collections, sales])
+  const inStockCrates  = calcInStockCrates(inStockEggs)
+  const inStockSingles = calcInStockSingles(inStockEggs)
 
-  let daysLeft = null
-  if (runRate && runRate > 0 && inStockEggs > 0) daysLeft = Math.round(inStockEggs / runRate)
+  const daysLeft = calcDaysLeft(inStockEggs, runRate)
+  const stockSignal = stockSignalFor(daysLeft)
+  const stockLabel = stockLabelFor(daysLeft)
 
-  const stockSignal = daysLeft === null ? 'gray'
-    : daysLeft >= 20 ? 'green'
-    : daysLeft >= 10 ? 'orange'
-    : 'red'
-  const stockLabel = daysLeft === null ? 'No data yet'
-    : daysLeft >= 20 ? 'Healthy'
-    : daysLeft >= 10 ? 'Getting low'
-    : 'Critical'
-
-  const thisMonthSales = useMemo(() => sales.filter(s => {
-    const d = new Date(s.date)
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-  }), [sales])
-
-  const monthRevenue = useMemo(
-    () => thisMonthSales.filter(s => s.payment_status === 'Paid').reduce((sum,s) => sum + parseFloat(s.amount||0), 0),
-    [thisMonthSales]
+  const thisMonthSales = useMemo(
+    () => filterByMonth(sales, now.getFullYear(), now.getMonth()),
+    [sales]
   )
+
+  const monthRevenue = useMemo(() => calcRevenue(thisMonthSales), [thisMonthSales])
 
   const lastMonthRevenue = useMemo(() => {
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    return sales
-      .filter(s => {
-        const d = new Date(s.date)
-        return d.getFullYear() === lastMonth.getFullYear() && d.getMonth() === lastMonth.getMonth()
-      })
-      .filter(s => s.payment_status === 'Paid')
-      .reduce((sum, s) => sum + parseFloat(s.amount||0), 0)
+    return calcRevenue(filterByMonth(sales, lastMonth.getFullYear(), lastMonth.getMonth()))
   }, [sales])
 
-  const revenueTrend = lastMonthRevenue > 0
-    ? ((monthRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(0)
-    : null
+  const revenueTrend = calcRevenueTrend(monthRevenue, lastMonthRevenue)
 
-  const monthExpenses = useMemo(() => expenses
-    .filter(e => { const d = new Date(e.date); return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth() })
-    .reduce((sum,e) => sum+parseFloat(e.amount||0), 0), [expenses])
+  const monthExpenses = useMemo(
+    () => calcTotalExpenses(filterByMonth(expenses, now.getFullYear(), now.getMonth())),
+    [expenses]
+  )
 
-  const netProfit = monthRevenue - monthExpenses
+  const netProfit = calcNetProfit(monthRevenue, monthExpenses)
   const hasExpenseData = monthExpenses > 0
 
   const creditSales = useMemo(() => sales.filter(s => s.payment_status==='Credit'&&!s.paid_at), [sales])
-  const paidBySale  = useMemo(() => {
-    const map = {}
-    for (const p of payments) map[p.sale_id] = (map[p.sale_id]||0) + parseFloat(p.amount||0)
-    return map
-  }, [payments])
-  const outstanding = useMemo(() => creditSales.reduce((sum,s) => {
-    return sum + Math.max(0, parseFloat(s.amount||0) - (paidBySale[s.id]||0))
-  }, 0), [creditSales, paidBySale])
+  const paidBySale  = useMemo(() => buildPaidBySaleMap(payments), [payments])
+  const outstanding = useMemo(() => calcOutstanding(sales, payments), [sales, payments])
 
-  const streak = useMemo(() => {
-    const dates = [...new Set(collections.map(c=>c.date))].sort().reverse()
-    if (!dates.length) return 0
-    let count=0, cursor=new Date(now); cursor.setHours(0,0,0,0)
-    for (const d of dates) {
-      const day=new Date(d); day.setHours(0,0,0,0)
-      const diff=Math.round((cursor-day)/86400000)
-      if (diff===0||diff===1) { count++; cursor=day } else break
-    }
-    return count
+  const streak = useMemo(() => calcCollectionStreak(collections, now), [collections])
+
+  const monthCollectedCrates = useMemo(() => {
+    return filterByMonth(collections, now.getFullYear(), now.getMonth())
+      .reduce((s, c) => s + parseInt(c.crates || 0), 0)
   }, [collections])
 
-  const monthCollectedCrates = useMemo(() => collections
-    .filter(c => { const d=new Date(c.date); return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth() })
-    .reduce((s,c) => s+parseInt(c.crates||0), 0), [collections])
+  const buyersScopedSales = useMemo(() => {
+    if (buyersPeriod === 'month') return thisMonthSales
+    if (buyersPeriod === '3m') {
+      const cutoff = new Date(now); cutoff.setMonth(cutoff.getMonth() - 3)
+      return sales.filter(s => new Date(s.date) >= cutoff)
+    }
+    if (buyersPeriod === 'custom') {
+      if (!buyersFrom && !buyersTo) return sales
+      return sales.filter(s => {
+        const d = s.date
+        if (buyersFrom && d < buyersFrom) return false
+        if (buyersTo && d > buyersTo) return false
+        return true
+      })
+    }
+    return sales // 'all'
+  }, [buyersPeriod, thisMonthSales, sales, buyersFrom, buyersTo])
 
-  const topBuyers = useMemo(() => {
-    const map = {}
-    thisMonthSales.forEach(s => {
-      const name = s.customer_name || 'Unknown'
-      if (!map[name]) map[name] = { name, amount: 0, crates: 0 }
-      map[name].amount += parseFloat(s.amount||0)
-      map[name].crates += parseInt(s.crates||0)
-    })
-    return Object.values(map).sort((a,b) => b.amount - a.amount).slice(0, 3)
-  }, [thisMonthSales])
-
-  const topDebts = useMemo(() => {
-    const map = {}
-    creditSales.forEach(s => {
-      const name = s.customer_name || 'Unknown'
-      const remaining = Math.max(0, parseFloat(s.amount||0) - (paidBySale[s.id]||0))
-      if (!map[name]) map[name] = { name, remaining: 0 }
-      map[name].remaining += remaining
-    })
-    return Object.values(map).sort((a,b) => b.remaining - a.remaining).slice(0, 3)
-  }, [creditSales, paidBySale])
+  const topBuyers = useMemo(() => calcTopBuyers(buyersScopedSales, 3), [buyersScopedSales])
+  const topDebts = useMemo(() => calcTopDebts(sales, payments, 3), [sales, payments])
 
   if (loading) {
     return (
@@ -398,7 +372,26 @@ export default function SummaryCards({ collections = [], sales = [], expenses = 
         <div style={{ display:'grid', gridTemplateColumns: isDesktop?'1fr 1fr':'1fr', gap:'10px', marginBottom:'10px' }}>
           {topBuyers.length > 0 && (
             <div style={cardSurface}>
-              <p style={label}>Top buyers this month</p>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'8px' }}>
+                <p style={{ ...label, margin:0 }}>Top buyers</p>
+                <div style={{ display:'flex', gap:'4px' }}>
+                  {[{ key:'month', label:'Month' }, { key:'3m', label:'3mo' }, { key:'all', label:'All' }, { key:'custom', label:'Custom' }].map(opt => (
+                    <button key={opt.key} onClick={() => setBuyersPeriod(opt.key)} style={{
+                      fontSize:'11px', fontWeight:500, padding:'3px 8px', borderRadius:'20px', border:'none', cursor:'pointer',
+                      background: buyersPeriod===opt.key ? '#1C1C1E' : '#F2F2F7',
+                      color: buyersPeriod===opt.key ? '#FFFFFF' : '#8E8E93',
+                    }}>{opt.label}</button>
+                  ))}
+                </div>
+              </div>
+              {buyersPeriod === 'custom' && (
+                <div style={{ display:'flex', gap:'6px', marginBottom:'10px' }}>
+                  <input type="date" value={buyersFrom} onChange={e => setBuyersFrom(e.target.value)}
+                    style={{ flex:1, fontSize:'12px', padding:'5px 8px', borderRadius:'8px', border:'1.5px solid #D1D1D6', color:'#1C1C1E', background:'#FFFFFF' }} />
+                  <input type="date" value={buyersTo} onChange={e => setBuyersTo(e.target.value)}
+                    style={{ flex:1, fontSize:'12px', padding:'5px 8px', borderRadius:'8px', border:'1.5px solid #D1D1D6', color:'#1C1C1E', background:'#FFFFFF' }} />
+                </div>
+              )}
               {topBuyers.map((b, i) => (
                 <div key={b.name} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'9px 0', borderBottom: i < topBuyers.length-1 ? '0.5px solid #E5E5EA' : 'none' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
@@ -415,7 +408,8 @@ export default function SummaryCards({ collections = [], sales = [], expenses = 
           )}
           {topDebts.length > 0 && (
             <div style={cardSurface}>
-              <p style={label}>Largest outstanding</p>
+              <p style={{ ...label, marginBottom: 2 }}>Largest outstanding</p>
+              <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#C7C7CC' }}>All-time · not affected by date filters</p>
               {topDebts.map((d, i) => (
                 <div key={d.name} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'9px 0', borderBottom: i < topDebts.length-1 ? '0.5px solid #E5E5EA' : 'none' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
