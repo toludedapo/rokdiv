@@ -224,6 +224,7 @@ export default function App() {
           onMarkPaid={handleMarkPaid}
           onReturnCrates={handleReturnCrates}
           onQueueOffline={() => {}}
+          onAddCustomer={addCustomer}
           showToast={showToast}
         />
       )}

@@ -5,7 +5,7 @@ import { todayISO, fmtDate, fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
 const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', gray: '#8E8E93' }
 const TINT = { green: 'rgba(52,199,89,0.12)', red: 'rgba(255,69,58,0.12)', orange: 'rgba(255,159,10,0.12)' }
 
-export default function SalesForm({ sales = [], cratesInFarm, customers = [], onSave, onDelete, onMarkPaid, onReturnCrates, onQueueOffline, showToast }) {
+export default function SalesForm({ sales = [], cratesInFarm, customers = [], onSave, onDelete, onMarkPaid, onReturnCrates, onQueueOffline, onAddCustomer, showToast }) {
   const [open, setOpen] = useState(true)
   const [form, setForm] = useState({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', payment_mode: 'Cash', crates_loaned: '', notes: '' })
   const [error,  setError]  = useState('')
@@ -32,8 +32,16 @@ export default function SalesForm({ sales = [], cratesInFarm, customers = [], on
     if (loaned > cratesInFarm) return setError(`Only ${cratesInFarm} crate(s) available.`)
     setError('')
     setSaving(true)
-    const payload = { date: form.date, customer_name: form.customer_name.trim(), crates: Number(form.crates)||0, singles: Number(form.singles)||0, amount: Number(form.amount), payment_status: form.payment_status, payment_mode: form.payment_status === 'Paid' ? form.payment_mode : null, crates_loaned: loaned, crates_returned: 0, notes: form.notes.trim(), paid_at: form.payment_status === 'Paid' ? todayISO() : null }
+    const trimmedName = form.customer_name.trim()
+    const payload = { date: form.date, customer_name: trimmedName, crates: Number(form.crates)||0, singles: Number(form.singles)||0, amount: Number(form.amount), payment_status: form.payment_status, payment_mode: form.payment_status === 'Paid' ? form.payment_mode : null, crates_loaned: loaned, crates_returned: 0, notes: form.notes.trim(), paid_at: form.payment_status === 'Paid' ? todayISO() : null }
     try {
+      // If this name doesn't match an existing customer (case-insensitive),
+      // create the customer record too — otherwise sales to new buyers never
+      // show up in Customers/Credit tabs even though the sale itself saves fine.
+      const isExisting = customers.some(c => c.name.toLowerCase() === trimmedName.toLowerCase())
+      if (!isExisting && onAddCustomer) {
+        await onAddCustomer({ name: trimmedName, whatsapp: null, notes: null })
+      }
       await onSave(payload)
       setForm({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', payment_mode: 'Cash', crates_loaned: '', notes: '' })
       showToast('Sale recorded')
