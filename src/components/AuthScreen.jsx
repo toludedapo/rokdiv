@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Check } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
+
+const SIGNAL = { green: '#34C759', red: '#FF453A' }
+const TINT = { red: 'rgba(255,69,58,0.12)' }
 
 export default function AuthScreen() {
   const { signIn } = useAuth()
@@ -62,35 +65,31 @@ export default function AuthScreen() {
   if (isRecovery) {
     return (
       <div style={containerStyle}>
-        <div style={logoWrap}>
-          <div style={logoBox}><span style={{ fontSize: 34 }}>🥚</span></div>
-          <h1 style={logoTitle}>ROKDIV</h1>
-          <p style={logoSub}>Set your new password</p>
-        </div>
-
+        <Logo />
+        <p style={logoSub}>Set your new password</p>
         <div style={cardStyle}>
           {saved ? (
             <div style={{ textAlign: 'center', padding: '8px 0' }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>✅</div>
-              <p style={{ fontWeight: 700, color: '#111827', fontSize: 15, marginBottom: 6 }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: '50%', background: 'rgba(52,199,89,0.12)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
+              }}>
+                <Check size={24} color={SIGNAL.green} />
+              </div>
+              <p style={{ fontWeight: 500, color: '#1C1C1E', fontSize: 15, marginBottom: 6 }}>
                 Password set successfully
               </p>
-              <p style={{ color: '#6B7280', fontSize: 13 }}>
-                Logging you in now...
+              <p style={{ color: '#8E8E93', fontSize: 13 }}>
+                Logging you in now…
               </p>
             </div>
           ) : (
             <>
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 6 }}>
-                Choose a new password
-              </h2>
-              <p style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 20 }}>
-                This will be your password every time you log in to ROKDIV.
-              </p>
-
+              <h2 style={cardHeading}>Choose a new password</h2>
+              <p style={cardSubheading}>This will be your password every time you log in to ROKDIV.</p>
               <form onSubmit={handleSetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
-                  <label className="label">New Password</label>
+                  <label style={fieldLabel}>New password</label>
                   <div style={{ position: 'relative' }}>
                     <input
                       type={showNew ? 'text' : 'password'}
@@ -98,9 +97,8 @@ export default function AuthScreen() {
                       required
                       value={newPass}
                       onChange={e => setNewPass(e.target.value)}
-                      className="field"
+                      style={{ ...fieldInput, paddingRight: 42 }}
                       placeholder="Min. 6 characters"
-                      style={{ fontSize: 16, paddingRight: 42 }}
                       autoFocus
                     />
                     <button type="button" onClick={() => setShowNew(s => !s)} style={eyeBtn}>
@@ -108,13 +106,11 @@ export default function AuthScreen() {
                     </button>
                   </div>
                 </div>
-
                 {error && <div style={errorBox}>{error}</div>}
-
-                <button type="submit" disabled={saving} className="btn-primary" style={{ marginTop: 4 }}>
+                <button type="submit" disabled={saving} style={primaryBtn}>
                   {saving
-                    ? <><Loader2 size={15} className="animate-spin" /> Saving...</>
-                    : 'Set Password & Log In'
+                    ? <><Loader2 size={15} className="animate-spin" /> Saving…</>
+                    : 'Set password & log in'
                   }
                 </button>
               </form>
@@ -128,95 +124,122 @@ export default function AuthScreen() {
   // ── Normal sign in screen ───────────────────────────────────
   return (
     <div style={containerStyle}>
-      <div style={logoWrap}>
-        <div style={logoBox}><span style={{ fontSize: 34 }}>🥚</span></div>
-        <h1 style={logoTitle}>ROKDIV</h1>
-        <p style={logoSub}>Farm Egg Tracker</p>
-      </div>
-
+      <Logo />
+      <p style={logoSub}>Farm egg tracker</p>
       <div style={cardStyle}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 22 }}>
-          Sign in to your farm
-        </h2>
-
+        <h2 style={cardHeading}>Sign in to your farm</h2>
         <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label className="label">Email</label>
+            <label style={fieldLabel}>Email</label>
             <input
               type="email" autoComplete="email" required
               value={email} onChange={e => setEmail(e.target.value)}
-              className="field" placeholder="you@email.com"
-              style={{ fontSize: 16 }}
+              style={fieldInput} placeholder="you@email.com"
             />
           </div>
-
           <div>
-            <label className="label">Password</label>
+            <label style={fieldLabel}>Password</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showPw ? 'text' : 'password'}
                 autoComplete="current-password" required
                 value={pass} onChange={e => setPass(e.target.value)}
-                className="field" placeholder="Enter password"
-                style={{ fontSize: 16, paddingRight: 42 }}
+                style={{ ...fieldInput, paddingRight: 42 }} placeholder="Enter password"
               />
               <button type="button" onClick={() => setShowPw(s => !s)} style={eyeBtn}>
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
-
           {error && <div style={errorBox}>{error}</div>}
-
-          <button type="submit" disabled={loading} className="btn-primary" style={{ marginTop: 4 }}>
+          <button type="submit" disabled={loading} style={primaryBtn}>
             {loading
-              ? <><Loader2 size={15} className="animate-spin" /> Signing in...</>
-              : 'Sign In'
+              ? <><Loader2 size={15} className="animate-spin" /> Signing in…</>
+              : 'Sign in'
             }
           </button>
         </form>
       </div>
-
-      <p style={{ marginTop: 24, fontSize: 11, color: '#9CA3AF', textAlign: 'center', maxWidth: 260 }}>
+      <p style={{ marginTop: 24, fontSize: 11, color: '#8E8E93', textAlign: 'center', maxWidth: 260 }}>
         Data syncs securely across all your devices via Supabase.
       </p>
     </div>
   )
 }
 
+function Logo() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+      <div style={iconBox}>
+        <svg width="36" height="36" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+          <rect x="-152" y="-92" width="304" height="184" rx="24" fill="none" stroke="#FFFFFF" strokeWidth="8" transform="translate(256,256) scale(0.78)" />
+          <g transform="translate(256,256) scale(0.78)">
+            <line x1="-50.6" y1="-92" x2="-50.6" y2="92" stroke="#FFFFFF" strokeWidth="6" />
+            <line x1="50.6" y1="-92" x2="50.6" y2="92" stroke="#FFFFFF" strokeWidth="6" />
+            <ellipse cx="-101.3" cy="0" rx="32" ry="40" fill="#FFFFFF" />
+            <ellipse cx="0" cy="0" rx="32" ry="40" fill="#FF9F0A" />
+            <ellipse cx="101.3" cy="0" rx="32" ry="40" fill="#FFFFFF" />
+          </g>
+        </svg>
+      </div>
+      <h1 style={logoTitle}>ROKDIV</h1>
+    </div>
+  )
+}
+
 const containerStyle = {
   minHeight: '100vh',
-  background: 'linear-gradient(160deg, #EEF1FF 0%, #F0F2F5 50%, #F0F2F5 100%)',
+  background: '#F2F2F7',
   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
   padding: '24px 20px',
   paddingTop: 'env(safe-area-inset-top)',
   paddingBottom: 'env(safe-area-inset-bottom)',
 }
-const logoWrap = {
-  display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32
-}
-const logoBox = {
-  width: 72, height: 72, borderRadius: 20,
-  background: 'linear-gradient(135deg, #4F6EF7 0%, #3B55E0 100%)',
+const iconBox = {
+  width: 88, height: 88, borderRadius: '20px',
+  background: '#0D0D0D',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  marginBottom: 14, boxShadow: '0 8px 24px rgba(79,110,247,0.35)',
 }
 const logoTitle = {
-  fontSize: 26, fontWeight: 700, color: '#111827',
-  letterSpacing: '-0.02em', lineHeight: 1
+  fontSize: '22px', fontWeight: 500, color: '#1C1C1E',
+  letterSpacing: '-0.02em', margin: 0,
 }
-const logoSub = { fontSize: 13, color: '#9CA3AF', marginTop: 4 }
+const logoSub = {
+  fontSize: '13px', color: '#8E8E93', marginTop: '14px', marginBottom: '32px',
+  textAlign: 'center', fontWeight: 500,
+}
 const cardStyle = {
   width: '100%', maxWidth: 360,
-  background: '#FFFFFF', borderRadius: 20,
-  boxShadow: '0 4px 32px rgba(0,0,0,0.10)',
+  background: '#FFFFFF', borderRadius: '20px',
+  border: '1.5px solid #D1D1D6',
+  boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
   padding: '28px 24px',
 }
+const cardHeading = {
+  fontSize: '16px', fontWeight: 500, color: '#1C1C1E', marginBottom: '6px', marginTop: 0,
+}
+const cardSubheading = {
+  fontSize: '12px', color: '#8E8E93', marginBottom: '20px', marginTop: 0,
+}
+const fieldLabel = {
+  display: 'block', fontSize: '12px', color: '#8E8E93', marginBottom: '4px', fontWeight: 500,
+}
+const fieldInput = {
+  width: '100%', padding: '11px 12px', borderRadius: '10px',
+  border: '1.5px solid #D1D1D6', fontSize: '16px', color: '#1C1C1E',
+  outline: 'none', boxSizing: 'border-box', background: '#FFFFFF',
+}
 const eyeBtn = {
-  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-  background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex',
+  position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+  background: 'none', border: 'none', cursor: 'pointer', color: '#8E8E93', display: 'flex', padding: 0,
 }
 const errorBox = {
-  background: '#FEF2F2', border: '1px solid #FECACA',
-  borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#DC2626'
+  background: TINT.red, border: 'none',
+  borderRadius: '10px', padding: '10px 14px', fontSize: '12px', color: SIGNAL.red, fontWeight: 500,
+}
+const primaryBtn = {
+  width: '100%', marginTop: '4px', padding: '13px', borderRadius: '12px',
+  background: '#0D0D0D', color: '#FFFFFF', border: 'none',
+  fontSize: '14px', fontWeight: 500, cursor: 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
 }
