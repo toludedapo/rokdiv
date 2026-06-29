@@ -214,10 +214,18 @@ export default function SummaryCards({ collections = [], sales = [], expenses = 
 
   const streak = useMemo(() => calcCollectionStreak(collections, now), [collections])
 
-  const monthCollectedCrates = useMemo(() => {
+  // REGRESSION FIX: previously only summed the `crates` field, silently
+  // dropping every collection's `singles` count. A month with e.g. 97
+  // singles spread across several entries would undercount by 3+ crates
+  // even though the bot's egg-based status report included them correctly.
+  // Now we total actual eggs first, then convert back to crates+singles,
+  // matching exactly how the bot (and Stock Remaining above) already do it.
+  const monthCollectedEggs = useMemo(() => {
     return filterByMonth(collections, now.getFullYear(), now.getMonth())
-      .reduce((s, c) => s + parseInt(c.crates || 0), 0)
+      .reduce((s, c) => s + eggsFromRecord(c), 0)
   }, [collections])
+  const monthCollectedCrates = Math.floor(monthCollectedEggs / CRATE_SIZE)
+  const monthCollectedSingles = monthCollectedEggs % CRATE_SIZE
 
   const buyersScopedSales = useMemo(() => {
     if (buyersPeriod === 'month') return thisMonthSales
@@ -331,7 +339,9 @@ export default function SummaryCards({ collections = [], sales = [], expenses = 
             <p style={label}>Collected this month</p>
             <p style={{ ...statValue, fontSize: isDesktop?'30px':'24px' }}>
               {monthCollectedCrates.toLocaleString()}
-              <span style={{ fontSize:'14px', fontWeight:400, color:'#8E8E93', marginLeft:'4px' }}>crates</span>
+              <span style={{ fontSize:'14px', fontWeight:400, color:'#8E8E93', marginLeft:'4px' }}>
+                crates{monthCollectedSingles > 0 ? ` +${monthCollectedSingles}` : ''}
+              </span>
             </p>
           </div>
           <p style={sub}>Log expenses to see profit</p>
