@@ -1,12 +1,26 @@
 import { useState, useMemo } from 'react'
+import {
+  buildDebtors, calcTotalOutstandingFromDebtors, calcOverdueCount, agingDays,
+  buildCratesOutCustomers, buildPaidBySaleMap,
+} from '../lib/calculations'
 
 const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', blue: '#0A84FF', gray: '#8E8E93' }
 const TINT = { green: 'rgba(52,199,89,0.12)', red: 'rgba(255,69,58,0.12)', orange: 'rgba(255,159,10,0.12)', blue: 'rgba(10,132,255,0.12)' }
 
 const fmt = (n) => `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`
 
+function SkeletonCard() {
+  return (
+    <div style={{ background:'#FFFFFF', borderRadius:'16px', padding:'16px', border:'1.5px solid #D1D1D6', boxShadow:'0 2px 6px rgba(0,0,0,0.08)', overflow:'hidden' }}>
+      <div style={{ background:'#E5E5EA', borderRadius:'6px', height:'10px', width:'50%', marginBottom:'10px', animation:'pulse 1.5s ease-in-out infinite' }} />
+      <div style={{ background:'#D1D1D6', borderRadius:'6px', height:'24px', width:'60%', marginBottom:'8px', animation:'pulse 1.5s ease-in-out infinite' }} />
+      <div style={{ background:'#E5E5EA', borderRadius:'6px', height:'10px', width:'40%', animation:'pulse 1.5s ease-in-out infinite' }} />
+    </div>
+  )
+}
+
 function agingLabel(date) {
-  const days = Math.floor((Date.now() - new Date(date)) / 86400000)
+  const days = agingDays(date)
   if (days === 0) return { label: 'Today', color: SIGNAL.blue, bg: TINT.blue }
   if (days <= 7)  return { label: `${days}d`, color: SIGNAL.green, bg: TINT.green }
   if (days <= 14) return { label: `${days}d`, color: SIGNAL.orange, bg: TINT.orange }
@@ -14,7 +28,7 @@ function agingLabel(date) {
 }
 
 export default function CreditTracker({
-  sales = [], onMarkPaid, payments = [], onAddPayment, onDeletePayment, onReturnCrates, isAdmin, customers = []
+  sales = [], onMarkPaid, payments = [], onAddPayment, onDeletePayment, onReturnCrates, isAdmin, customers = [], loading = false
 }) {
   const [expandedCustomer, setExpandedCustomer] = useState(null)
   const [partialCustomer, setPartialCustomer]   = useState(null)
@@ -29,60 +43,20 @@ export default function CreditTracker({
   const [activeFilter, setActiveFilter]         = useState('outstanding')
   const [activeSection, setActiveSection]       = useState('money')
 
-  const paidBySaleMap = useMemo(() => {
-    const map = {}
-    payments.forEach(p => {
-      map[p.sale_id] = (map[p.sale_id] || 0) + parseFloat(p.amount || 0)
-    })
-    return map
-  }, [payments])
+  // ── Shared logic from calculations.js — same functions Home and the
+  // unit tests use, so this screen can never drift from Home's numbers.
+  const paidBySaleMap = useMemo(() => buildPaidBySaleMap(payments), [payments])
 
-  const allDebtors = useMemo(() => {
-    const creditSales = sales.filter(s =>
-      s.payment_status === 'Credit' || (s.payment_status === 'Paid' && s.paid_at)
-    )
-    const map = {}
-    creditSales.forEach(s => {
-      const name = s.customer_name || 'Unknown'
-      if (!map[name]) map[name] = { name, sales: [], originalTotal: 0, oldest: s.date }
-      map[name].sales.push(s)
-      map[name].originalTotal += parseFloat(s.amount || 0)
-      if (s.date < map[name].oldest) map[name].oldest = s.date
-    })
-    return Object.values(map).map(d => {
-      const totalPaid = d.sales.reduce((s, sale) => {
-        if (sale.payment_status === 'Paid') return s + parseFloat(sale.amount || 0)
-        return s + (paidBySaleMap[sale.id] || 0)
-      }, 0)
-      const remaining = Math.max(0, d.originalTotal - totalPaid)
-      const isSettled = d.sales.every(s => s.payment_status === 'Paid') || remaining === 0
-      return { ...d, totalPaid, remaining, isSettled }
-    }).sort((a, b) => new Date(a.oldest) - new Date(b.oldest))
-  }, [sales, paidBySaleMap])
+  const allDebtors = useMemo(() => buildDebtors(sales, payments), [sales, payments])
 
   const totalOutstanding = useMemo(
-    () => allDebtors.reduce((s, d) => s + d.remaining, 0),
+    () => calcTotalOutstandingFromDebtors(allDebtors),
     [allDebtors]
   )
   const outstandingDebtors = allDebtors.filter(d => !d.isSettled)
-  const overdueCount = outstandingDebtors.filter(d =>
-    Math.floor((Date.now() - new Date(d.oldest)) / 86400000) > 14
-  ).length
+  const overdueCount = calcOverdueCount(allDebtors)
 
-  const cratesOutCustomers = useMemo(() => {
-    const map = {}
-    sales.forEach(s => {
-      const loaned = parseInt(s.crates_loaned || 0)
-      const returned = parseInt(s.crates_returned || 0)
-      const outstanding = loaned - returned
-      if (outstanding <= 0) return
-      const name = s.customer_name || 'Unknown'
-      if (!map[name]) map[name] = { name, sales: [], totalOut: 0 }
-      map[name].sales.push({ ...s, outstanding })
-      map[name].totalOut += outstanding
-    })
-    return Object.values(map).sort((a, b) => b.totalOut - a.totalOut)
-  }, [sales])
+  const cratesOutCustomers = useMemo(() => buildCratesOutCustomers(sales), [sales])
 
   const totalCratesOut = cratesOutCustomers.reduce((s, c) => s + c.totalOut, 0)
 
@@ -93,7 +67,7 @@ export default function CreditTracker({
     if (activeFilter === 'outstanding') result = result.filter(d => !d.isSettled && d.remaining > 0)
     if (activeFilter === 'partial')     result = result.filter(d => d.totalPaid > 0 && d.remaining > 0)
     if (activeFilter === 'overdue')     result = result.filter(d =>
-      !d.isSettled && Math.floor((Date.now() - new Date(d.oldest)) / 86400000) > 14
+      !d.isSettled && agingDays(d.oldest) > 14
     )
     if (activeFilter === 'settled')     result = result.filter(d => d.isSettled)
     return result
@@ -169,6 +143,17 @@ export default function CreditTracker({
       )}`
     }
     return `https://wa.me/?text=${msg}`
+  }
+
+  if (loading) {
+    return (
+      <div style={{ paddingBottom: '100px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+          <SkeletonCard /><SkeletonCard />
+        </div>
+        <SkeletonCard />
+      </div>
+    )
   }
 
   return (
@@ -303,7 +288,7 @@ export default function CreditTracker({
                   <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#8E8E93' }}>
                     {debtor.sales.length} sale{debtor.sales.length !== 1 ? 's' : ''} · {new Date(debtor.oldest).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
                     {!debtor.isSettled && (() => {
-                      const days = Math.floor((Date.now() - new Date(debtor.oldest)) / 86400000)
+                      const days = agingDays(debtor.oldest)
                       if (days > 14) return <span style={{ marginLeft:'6px', color: SIGNAL.red, fontWeight:500 }}>· {days}d overdue</span>
                       if (days > 7)  return <span style={{ marginLeft:'6px', color: SIGNAL.orange, fontWeight:500 }}>· {days}d</span>
                       return null

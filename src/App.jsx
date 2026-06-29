@@ -237,6 +237,7 @@ export default function App() {
           onDeletePayment={handleDeletePayment}
           onReturnCrates={handleReturnCrates}
           isAdmin={isAdmin}
+          loading={dataLoading}
         />
       )}
       {activeTab === 'expenses' && (
