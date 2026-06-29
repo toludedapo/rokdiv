@@ -194,7 +194,7 @@ export default function App() {
     <>
       {activeTab === 'dashboard' && (
         <>
-          <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} />
+          <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} loading={dataLoading} />
           <div style={{ marginTop:'12px' }}>
             <CrateInventoryCard
               inventory={inventory}
@@ -383,7 +383,7 @@ export default function App() {
           {activeTab === 'dashboard' ? (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'24px', alignItems:'start' }}>
               <div style={{ gridColumn:'1 / 3' }}>
-                <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} isDesktop={true} />
+                <SummaryCards collections={collections} sales={sales} expenses={expenses} payments={payments} isDesktop={true} loading={dataLoading} />
               </div>
               <div>
                 <CrateInventoryCard
