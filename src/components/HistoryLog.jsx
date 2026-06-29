@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { History, Download } from 'lucide-react'
 import { fmtDate, fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
 import { exportSalesCSV, exportCollectionsCSV } from '../utils/exportUtils.js'
+import { SkeletonList } from './Skeleton'
 
 const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', gray: '#8E8E93' }
 const TINT = { green: 'rgba(52,199,89,0.12)', red: 'rgba(255,69,58,0.12)', orange: 'rgba(255,159,10,0.12)' }
@@ -11,7 +12,7 @@ function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
-export default function HistoryLog({ sales = [], collections = [], payments = [], onClearAll, showToast, isAdmin }) {
+export default function HistoryLog({ sales = [], collections = [], payments = [], onClearAll, showToast, isAdmin, loading = false }) {
   const [tab, setTab] = useState('sales')
 
   const today = new Date().toISOString().slice(0, 10)
@@ -45,6 +46,10 @@ export default function HistoryLog({ sales = [], collections = [], payments = []
   function setThisMonth() { setFromDate(defaultFrom); setToDate(today) }
 
   const hasFilter = fromDate || toDate
+
+  if (loading) {
+    return <SkeletonList rows={6} />
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>

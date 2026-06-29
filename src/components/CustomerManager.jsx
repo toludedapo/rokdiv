@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
 import { Plus, Loader2, Pencil, Trash2, X, Check, Search } from 'lucide-react'
 import { normalizeWhatsApp, buildWaLink } from '../lib/calculations'
+import { SkeletonList } from './Skeleton'
 
 const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', gray: '#8E8E93' }
 
-export default function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, isAdmin }) {
+export default function CustomerManager({ customers = [], onAdd, onUpdate, onDelete, isAdmin, loading = false }) {
   const [search, setSearch]     = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId]     = useState(null)
@@ -61,6 +62,10 @@ export default function CustomerManager({ customers = [], onAdd, onUpdate, onDel
     setDeleting(id)
     await onDelete(id)
     setDeleting(null)
+  }
+
+  if (loading) {
+    return <SkeletonList rows={5} />
   }
 
   return (

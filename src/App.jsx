@@ -57,9 +57,9 @@ export default function App() {
   const { collections, addCollection, loading: collectionsLoading } = useCollections(user?.id)
   const { sales, addSale, updateSale, markPaid, loading: salesLoading } = useSales(user?.id)
   const { inventory, setTotalOwned }                      = useCrateInventory(user?.id)
-  const { payments, addPayment, deletePayment }           = usePayments(user?.id)
-  const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers(user?.id)
-  const { expenses, addExpense, deleteExpense }           = useExpenses(user?.id)
+  const { payments, addPayment, deletePayment, loading: paymentsLoading }     = usePayments(user?.id)
+  const { customers, addCustomer, updateCustomer, deleteCustomer, loading: customersLoading } = useCustomers(user?.id)
+  const { expenses, addExpense, deleteExpense, loading: expensesLoading }     = useExpenses(user?.id)
 
   const [activeTab,    setActiveTab]    = useState(() => localStorage.getItem('rokdiv_tab') || 'dashboard')
   const [toast,        setToast]        = useState(null)
@@ -70,6 +70,13 @@ export default function App() {
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
   const dataLoading = !!(collectionsLoading || salesLoading)
+  // Each tab gets its own precise loading flag — a sale being slow to load
+  // shouldn't make the Customers tab show a skeleton if customers already
+  // resolved, and vice versa. Credit/Expenses/History need data from more
+  // than one source, so theirs combine the relevant flags.
+  const creditLoading   = !!(salesLoading || paymentsLoading)
+  const expensesTabLoading = !!(expensesLoading || salesLoading)
+  const historyLoading  = !!(collectionsLoading || salesLoading || paymentsLoading)
   const allTabs = isAdmin
     ? [...NAV_TABS, { id: 'users', Icon: Settings, label: 'Users' }]
     : NAV_TABS
@@ -212,6 +219,7 @@ export default function App() {
           onDelete={() => {}}
           onQueueOffline={() => {}}
           showToast={showToast}
+          loading={collectionsLoading}
         />
       )}
       {activeTab === 'sales' && (
@@ -226,6 +234,7 @@ export default function App() {
           onQueueOffline={() => {}}
           onAddCustomer={addCustomer}
           showToast={showToast}
+          loading={salesLoading}
         />
       )}
       {activeTab === 'credit' && (
@@ -237,7 +246,7 @@ export default function App() {
           onDeletePayment={handleDeletePayment}
           onReturnCrates={handleReturnCrates}
           isAdmin={isAdmin}
-          loading={dataLoading}
+          loading={creditLoading}
         />
       )}
       {activeTab === 'expenses' && (
@@ -247,6 +256,7 @@ export default function App() {
           onDelete={handleDeleteExpense}
           monthlySales={sales}
           isAdmin={isAdmin}
+          loading={expensesTabLoading}
         />
       )}
       {activeTab === 'customers' && (
@@ -256,6 +266,7 @@ export default function App() {
           onUpdate={updateCustomer}
           onDelete={isAdmin ? deleteCustomer : null}
           isAdmin={isAdmin}
+          loading={customersLoading}
         />
       )}
       {activeTab === 'history' && (
@@ -266,6 +277,7 @@ export default function App() {
           onClearAll={handleClearAll}
           showToast={showToast}
           isAdmin={isAdmin}
+          loading={historyLoading}
         />
       )}
       {activeTab === 'users' && isAdmin && (

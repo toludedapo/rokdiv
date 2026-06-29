@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react'
+import { calcRevenueForMonth, calcExpensesForMonth, calcNetProfit, calcMargin, isInMonth } from '../lib/calculations'
+import { SkeletonCard } from './Skeleton'
 
 const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', gray: '#8E8E93' }
 
@@ -12,7 +14,7 @@ const CATEGORIES = [
 
 const fmt = (n) => `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`
 
-export default function ExpenseTracker({ expenses = [], onAdd, onDelete, monthlySales, isAdmin }) {
+export default function ExpenseTracker({ expenses = [], onAdd, onDelete, monthlySales, isAdmin, loading = false }) {
   const now = new Date()
   const [viewYear, setViewYear]   = useState(now.getFullYear())
   const [viewMonth, setViewMonth] = useState(now.getMonth())
@@ -29,13 +31,15 @@ export default function ExpenseTracker({ expenses = [], onAdd, onDelete, monthly
 
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
-  const monthExpenses = useMemo(() =>
-    expenses.filter(e => {
-      const d = new Date(e.date)
-      return d.getFullYear() === viewYear && d.getMonth() === viewMonth
-    }), [expenses, viewYear, viewMonth])
+  const monthExpenses = useMemo(
+    () => expenses.filter(e => isInMonth(e.date, viewYear, viewMonth)),
+    [expenses, viewYear, viewMonth]
+  )
 
-  const totalExpenses = monthExpenses.reduce((s, e) => s + parseFloat(e.amount), 0)
+  const totalExpenses = useMemo(
+    () => calcExpensesForMonth(expenses, viewYear, viewMonth),
+    [expenses, viewYear, viewMonth]
+  )
 
   const byCategory = CATEGORIES.map(cat => ({
     ...cat,
@@ -44,18 +48,15 @@ export default function ExpenseTracker({ expenses = [], onAdd, onDelete, monthly
       .reduce((s, e) => s + parseFloat(e.amount), 0)
   })).filter(c => c.amount > 0)
 
-  const monthRevenue = useMemo(() => {
-    if (!monthlySales) return 0
-    return monthlySales
-      .filter(s => {
-        const d = new Date(s.date)
-        return d.getFullYear() === viewYear && d.getMonth() === viewMonth && s.payment_status === 'Paid'
-      })
-      .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0)
-  }, [monthlySales, viewYear, viewMonth])
+  // Uses the same calcRevenueForMonth that Home uses — guarantees these
+  // two screens can never disagree on what counts as revenue again.
+  const monthRevenue = useMemo(
+    () => calcRevenueForMonth(monthlySales || [], viewYear, viewMonth),
+    [monthlySales, viewYear, viewMonth]
+  )
 
-  const netProfit = monthRevenue - totalExpenses
-  const margin = monthRevenue > 0 ? ((netProfit / monthRevenue) * 100).toFixed(1) : null
+  const netProfit = calcNetProfit(monthRevenue, totalExpenses)
+  const margin = calcMargin(netProfit, monthRevenue)
 
   function prevMonth() {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
@@ -87,6 +88,14 @@ export default function ExpenseTracker({ expenses = [], onAdd, onDelete, monthly
   }
 
   const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth()
+
+  if (loading) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+        <SkeletonCard /><SkeletonCard /><SkeletonCard />
+      </div>
+    )
+  }
 
   return (
     <div style={{ paddingBottom: '100px' }}>

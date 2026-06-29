@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { Plus, ChevronDown, ChevronUp, Trash2, Loader2 } from 'lucide-react'
 import { todayISO, fmtDate, CRATE_SIZE } from '../utils/dateUtils.js'
+import { SkeletonFormWithList } from './Skeleton'
 
 const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', gray: '#8E8E93' }
 
-export default function CollectionForm({ collections = [], onSave, onDelete, onQueueOffline, showToast }) {
+export default function CollectionForm({ collections = [], onSave, onDelete, onQueueOffline, showToast, loading = false }) {
+  if (loading) return <SkeletonFormWithList />
+
   const [open,   setOpen]   = useState(true)
   const [form,   setForm]   = useState({ date: todayISO(), crates: '', singles: '', notes: '' })
   const [error,  setError]  = useState('')
