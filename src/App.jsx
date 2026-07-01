@@ -100,6 +100,20 @@ export default function App() {
   useOfflineSync({ addCollection, addSale, showToast })
   useWeeklySummary(sales, collections)
 
+  // Reset to Home specifically on a fresh sign-in — a mid-session refresh
+  // should stay on the last tab (that's intentional, see handleTabChange),
+  // but re-entering the app via login is a new session and should always
+  // start at Home rather than wherever you happened to be last time.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        localStorage.removeItem('rokdiv_tab')
+        setActiveTab('dashboard')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
   useEffect(() => {
     const handler = (e) => handleTabChange(e.detail)
     window.addEventListener('rokdiv-nav', handler)
