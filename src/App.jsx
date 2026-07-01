@@ -170,7 +170,7 @@ export default function App() {
   }
 
   async function handleClearAll() {
-    const { error } = await supabase.rpc('clear_user_data')
+    const { error } = await supabase.rpc('clear_user_data', { target_user_id: user.id })
     if (error) {
       showToast('Could not clear data: ' + error.message)
       return
