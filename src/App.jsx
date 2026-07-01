@@ -57,7 +57,7 @@ export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
   const { collections, addCollection, loading: collectionsLoading } = useCollections(user?.id)
   const { sales, addSale, updateSale, markPaid, loading: salesLoading } = useSales(user?.id)
-  const { inventory, setTotalOwned }                      = useCrateInventory(user?.id)
+  const { inventory, setTotalOwned, loading: crateLoading } = useCrateInventory(user?.id)
   const { payments, addPayment, deletePayment, loading: paymentsLoading }     = usePayments(user?.id)
   const { customers, addCustomer, updateCustomer, deleteCustomer, loading: customersLoading } = useCustomers(user?.id)
   const { expenses, addExpense, deleteExpense, loading: expensesLoading }     = useExpenses(user?.id)
@@ -82,7 +82,10 @@ export default function App() {
   // Show a blocking one-time prompt when the farm has no crate total set yet
   // (fresh account, or right after a data wipe) — crate math is meaningless
   // without this, so we ask for it up front instead of silently showing 0s.
-  const needsCrateSetup = !!user && !dataLoading && !crateSetupDismissed && !(inventory?.total_owned > 0)
+  // Gated on crateLoading specifically (not the unrelated collections/sales
+  // flag) so it correctly waits for crate_inventory's own fetch to resolve
+  // instead of racing on stale data left over from before a sign-out.
+  const needsCrateSetup = !!user && !crateLoading && !crateSetupDismissed && !(inventory?.total_owned > 0)
   const allTabs = isAdmin
     ? [...NAV_TABS, { id: 'users', Icon: Settings, label: 'Users' }]
     : NAV_TABS
@@ -109,6 +112,11 @@ export default function App() {
       if (event === 'SIGNED_IN') {
         localStorage.removeItem('rokdiv_tab')
         setActiveTab('dashboard')
+        // Component state (like a "later" dismissal) survives sign-out since
+        // App never unmounts — reset it so a real fresh session re-checks
+        // whether crates actually need setting up, instead of trusting a
+        // dismissal that may be left over from a previous account/session.
+        setCrateSetupDismissed(false)
       }
     })
     return () => subscription.unsubscribe()
