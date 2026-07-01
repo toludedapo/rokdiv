@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Home, Egg, ShoppingCart, Users as UsersIcon, FileText, Receipt, History as HistoryIcon, Settings, Key, LogOut } from 'lucide-react'
 import { supabase } from './lib/supabase.js'
 import { useAuth }          from './hooks/useAuth'
@@ -107,9 +107,17 @@ export default function App() {
   // should stay on the last tab (that's intentional, see handleTabChange),
   // but re-entering the app via login is a new session and should always
   // start at Home rather than wherever you happened to be last time.
+  //
+  // IMPORTANT: Supabase can re-fire SIGNED_IN when a backgrounded tab comes
+  // back and silently re-validates its session token, even though the user
+  // never actually logged out — this is not a real fresh login. We only
+  // treat it as one if the immediately preceding event was a genuine
+  // SIGNED_OUT, so switching apps mid-entry never yanks you back to Home
+  // or clears whatever form/tab you were on.
+  const lastAuthEventRef = useRef(null)
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
+      if (event === 'SIGNED_IN' && lastAuthEventRef.current === 'SIGNED_OUT') {
         localStorage.removeItem('rokdiv_tab')
         setActiveTab('dashboard')
         // Component state (like a "later" dismissal) survives sign-out since
@@ -118,6 +126,7 @@ export default function App() {
         // dismissal that may be left over from a previous account/session.
         setCrateSetupDismissed(false)
       }
+      lastAuthEventRef.current = event
     })
     return () => subscription.unsubscribe()
   }, [])
