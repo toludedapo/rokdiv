@@ -21,6 +21,7 @@ import CustomerManager    from './components/CustomerManager'
 import Toast              from './components/Toast'
 import ChangePassword     from './components/ChangePassword'
 import CrateInventoryCard from './components/CrateInventoryCard'
+import CrateSetupPrompt   from './components/CrateSetupPrompt'
 
 const ADMIN_EMAIL = 'dadimula1@gmail.com'
 
@@ -66,6 +67,7 @@ export default function App() {
   const [isOnline,     setIsOnline]     = useState(navigator.onLine)
   const [offlineCount, setOfflineCount] = useState(0)
   const [showChangePw, setShowChangePw] = useState(false)
+  const [crateSetupDismissed, setCrateSetupDismissed] = useState(false)
   const isDesktop = useIsDesktop()
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
@@ -77,6 +79,10 @@ export default function App() {
   const creditLoading   = !!(salesLoading || paymentsLoading)
   const expensesTabLoading = !!(expensesLoading || salesLoading)
   const historyLoading  = !!(collectionsLoading || salesLoading || paymentsLoading)
+  // Show a blocking one-time prompt when the farm has no crate total set yet
+  // (fresh account, or right after a data wipe) — crate math is meaningless
+  // without this, so we ask for it up front instead of silently showing 0s.
+  const needsCrateSetup = !!user && !dataLoading && !crateSetupDismissed && !(inventory?.total_owned > 0)
   const allTabs = isAdmin
     ? [...NAV_TABS, { id: 'users', Icon: Settings, label: 'Users' }]
     : NAV_TABS
@@ -170,7 +176,7 @@ export default function App() {
   }
 
   async function handleClearAll() {
-    const { error } = await supabase.rpc('clear_user_data', { target_user_id: user.id })
+    const { error } = await supabase.rpc('clear_user_data')
     if (error) {
       showToast('Could not clear data: ' + error.message)
       return
@@ -346,6 +352,7 @@ export default function App() {
   ) : (
     <div style={{
       background:'#FFFFFF', padding:'14px 16px', borderBottom:'0.5px solid #E5E5EA',
+      paddingTop:'calc(14px + env(safe-area-inset-top))',
       position:'sticky', top:0, zIndex:50,
       display:'flex', alignItems:'center', justifyContent:'space-between'
     }}>
@@ -418,6 +425,12 @@ export default function App() {
         </div>
         {showChangePw && <ChangePassword onClose={() => setShowChangePw(false)} />}
         {toast && <Toast message={toast.message} onDone={() => setToast(null)} />}
+        {needsCrateSetup && (
+          <CrateSetupPrompt
+            onSetTotalOwned={setTotalOwned}
+            onDismiss={() => setCrateSetupDismissed(true)}
+          />
+        )}
       </div>
     )
   }
@@ -426,13 +439,14 @@ export default function App() {
   return (
     <div style={{ background:'#F2F2F7', minHeight:'100vh', maxWidth:'480px', margin:'0 auto', fontFamily:"-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" }}>
       {header}
-      <div style={{ padding:'16px 14px', paddingBottom:'90px' }}>
+      <div style={{ padding:'16px 14px', paddingBottom:'calc(90px + env(safe-area-inset-bottom))' }}>
         {tabContent}
       </div>
       <nav style={{
         position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)',
         width:'100%', maxWidth:'480px', background:'#FFFFFF',
-        borderTop:'0.5px solid #E5E5EA', display:'flex', zIndex:50
+        borderTop:'0.5px solid #E5E5EA', display:'flex', zIndex:50,
+        paddingBottom:'env(safe-area-inset-bottom)'
       }}>
         {allTabs.map(tab => {
           const active = activeTab === tab.id
@@ -457,6 +471,12 @@ export default function App() {
       </nav>
       {showChangePw && <ChangePassword onClose={() => setShowChangePw(false)} />}
       {toast && <Toast message={toast.message} onDone={() => setToast(null)} />}
+      {needsCrateSetup && (
+        <CrateSetupPrompt
+          onSetTotalOwned={setTotalOwned}
+          onDismiss={() => setCrateSetupDismissed(true)}
+        />
+      )}
     </div>
   )
 }
