@@ -13,6 +13,7 @@ export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, c
   const [open, setOpen] = useState(true)
   const [form, setForm] = useState({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', payment_mode: 'Cash', crates_loaned: '', notes: '' })
   const [error,  setError]  = useState('')
+  const [stockBlock, setStockBlock] = useState(null) // popup shown when a sale would exceed real stock
   const [saving, setSaving] = useState(false)
   const [filter, setFilter]       = useState('All')
   const [returningId, setReturningId] = useState(null)
@@ -35,10 +36,18 @@ export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, c
     const totalEggs = (Number(form.crates)||0)*CRATE_SIZE + (Number(form.singles)||0)
     // A sale can never move more eggs than the farm actually has in stock —
     // block it outright rather than silently letting stock go negative.
+    // This is deliberately a popup, not the inline error line — it's a hard
+    // stop the person shouldn't be able to miss, unlike a minor field slip.
     if (wouldExceedStock(totalEggs, inStockEggs)) {
-      const stockCrates  = Math.floor(inStockEggs / CRATE_SIZE)
-      const stockSingles = inStockEggs % CRATE_SIZE
-      return setError(`Not enough stock. Only ${stockCrates} crate${stockCrates !== 1 ? 's' : ''} + ${stockSingles} (${inStockEggs.toLocaleString()} eggs) in stock.`)
+      setStockBlock({
+        attemptedEggs: totalEggs,
+        attemptedCrates: Number(form.crates) || 0,
+        attemptedSingles: Number(form.singles) || 0,
+        inStockEggs,
+        inStockCrates: Math.floor(inStockEggs / CRATE_SIZE),
+        inStockSingles: inStockEggs % CRATE_SIZE,
+      })
+      return
     }
     const loaned = Number(form.crates_loaned) || 0
     if (loaned > cratesInFarm) return setError(`Only ${cratesInFarm} crate(s) available.`)
@@ -275,6 +284,31 @@ export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, c
           )}
         </div>
       )}
+
+      {stockBlock && (
+        <div style={stockOverlay} onClick={() => setStockBlock(null)}>
+          <div style={stockModal} onClick={e => e.stopPropagation()}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, background: TINT.red,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16
+            }}>
+              <span style={{ fontSize: 22 }}>🚫</span>
+            </div>
+            <h2 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 500, color: '#1C1C1E', letterSpacing: '-0.02em' }}>
+              Not enough stock
+            </h2>
+            <p style={{ margin: '0 0 18px', fontSize: 13, color: '#8E8E93', lineHeight: 1.5 }}>
+              You're trying to sell <strong style={{ color: '#1C1C1E' }}>{stockBlock.attemptedCrates} crate{stockBlock.attemptedCrates !== 1 ? 's' : ''} + {stockBlock.attemptedSingles}</strong> ({stockBlock.attemptedEggs.toLocaleString()} eggs), but only <strong style={{ color: SIGNAL.red }}>{stockBlock.inStockCrates} crate{stockBlock.inStockCrates !== 1 ? 's' : ''} + {stockBlock.inStockSingles}</strong> ({stockBlock.inStockEggs.toLocaleString()} eggs) is actually in stock.
+            </p>
+            <button onClick={() => setStockBlock(null)} style={{
+              width: '100%', background: '#1C1C1E', color: '#FFFFFF', border: 'none', borderRadius: 12,
+              padding: '13px', fontSize: 14, fontWeight: 500, cursor: 'pointer',
+            }}>
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -290,6 +324,20 @@ const fieldInput = {
   width: '100%', padding: '10px 12px', borderRadius: 10,
   border: '1.5px solid #D1D1D6', fontSize: 16, color: '#1C1C1E',
   outline: 'none', boxSizing: 'border-box', background: '#FFFFFF',
+}
+const stockOverlay = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+  display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+  zIndex: 1000, padding: 20,
+  overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+  paddingTop: 'max(env(safe-area-inset-top), 20px)',
+  paddingBottom: 'max(env(safe-area-inset-bottom), 20px)',
+}
+const stockModal = {
+  background: '#FFFFFF', borderRadius: 20, padding: 24,
+  width: '100%', maxWidth: 360,
+  marginTop: 'max(10vh, 20px)', marginBottom: 20,
+  boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
 }
 const primaryBtn = {
   width: '100%', marginTop: 12, padding: '13px', borderRadius: 12,
