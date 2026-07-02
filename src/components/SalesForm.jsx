@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
 import { Plus, ChevronDown, ChevronUp, Trash2, Loader2 } from 'lucide-react'
 import { todayISO, fmtDate, fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
+import { wouldExceedStock } from '../lib/calculations'
 import { SkeletonFormWithList } from './Skeleton'
 
 const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', gray: '#8E8E93' }
 const TINT = { green: 'rgba(52,199,89,0.12)', red: 'rgba(255,69,58,0.12)', orange: 'rgba(255,159,10,0.12)' }
 
-export default function SalesForm({ sales = [], cratesInFarm, customers = [], onSave, onDelete, onMarkPaid, onReturnCrates, onQueueOffline, onAddCustomer, showToast, loading = false }) {
+export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, customers = [], onSave, onDelete, onMarkPaid, onReturnCrates, onQueueOffline, onAddCustomer, showToast, loading = false }) {
   if (loading) return <SkeletonFormWithList />
 
   const [open, setOpen] = useState(true)
@@ -31,6 +32,14 @@ export default function SalesForm({ sales = [], cratesInFarm, customers = [], on
     if (!form.date)                 return setError('Pick a date.')
     if (!form.amount || isNaN(+form.amount)) return setError('Enter a valid amount.')
     if (form.crates === '' && form.singles === '') return setError('Enter quantity sold.')
+    const totalEggs = (Number(form.crates)||0)*CRATE_SIZE + (Number(form.singles)||0)
+    // A sale can never move more eggs than the farm actually has in stock —
+    // block it outright rather than silently letting stock go negative.
+    if (wouldExceedStock(totalEggs, inStockEggs)) {
+      const stockCrates  = Math.floor(inStockEggs / CRATE_SIZE)
+      const stockSingles = inStockEggs % CRATE_SIZE
+      return setError(`Not enough stock. Only ${stockCrates} crate${stockCrates !== 1 ? 's' : ''} + ${stockSingles} (${inStockEggs.toLocaleString()} eggs) in stock.`)
+    }
     const loaned = Number(form.crates_loaned) || 0
     if (loaned > cratesInFarm) return setError(`Only ${cratesInFarm} crate(s) available.`)
     setError('')
@@ -71,6 +80,8 @@ export default function SalesForm({ sales = [], cratesInFarm, customers = [], on
   }
 
   const total    = (Number(form.crates)||0)*CRATE_SIZE + (Number(form.singles)||0)
+  const stockCrates  = Math.floor(inStockEggs / CRATE_SIZE)
+  const stockSingles = inStockEggs % CRATE_SIZE
   const filtered = (filter === 'All' ? sales : sales.filter(s => s.payment_status === filter)).slice().sort((a,b) => {
     const dateA = a.created_at || a.date
     const dateB = b.created_at || b.date
@@ -150,7 +161,7 @@ export default function SalesForm({ sales = [], cratesInFarm, customers = [], on
               </div>
             )}
             <div>
-              <label style={fieldLabel}>Crates sold</label>
+              <label style={fieldLabel}>Crates sold <span style={{ color: inStockEggs > 0 ? SIGNAL.gray : SIGNAL.red }}>({stockCrates}cr {stockSingles} in stock)</span></label>
               <input type="number" inputMode="numeric" style={fieldInput} placeholder="0" value={form.crates} onChange={e => set('crates', e.target.value)} />
             </div>
             <div>

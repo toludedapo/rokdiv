@@ -8,6 +8,7 @@ import { usePayments }      from './hooks/usePayments'
 import { useExpenses }      from './hooks/useExpenses'
 import { useOfflineSync }   from './hooks/useOfflineSync'
 import { useWeeklySummary } from './hooks/useWeeklySummary'
+import { calcInStockEggs }  from './lib/calculations'
 
 import AuthScreen         from './components/AuthScreen'
 import SummaryCards, { CollectionChart } from './components/SummaryCards'
@@ -264,6 +265,7 @@ export default function App() {
           sales={sales || []}
           customers={customers}
           cratesInFarm={Math.max(0, (inventory?.total_owned ?? 0) - cratesOut)}
+          inStockEggs={calcInStockEggs(collections || [], sales || [])}
           onSave={handleAddSale}
           onDelete={() => {}}
           onMarkPaid={handleMarkPaid}

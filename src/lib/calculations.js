@@ -65,6 +65,15 @@ export function calcInStockSingles(inStockEggs) {
   return inStockEggs % CRATE_SIZE
 }
 
+// ── Stock guard (SalesForm uses this to block overselling) ────────────────
+// A sale can never legitimately move more eggs than the farm actually has
+// in stock right now — kept as its own named function (rather than an
+// inline `>` in the component) so it's directly testable and there's one
+// place to change the rule if it ever needs a tolerance/grace amount later.
+export function wouldExceedStock(eggsToSell, inStockEggs) {
+  return eggsToSell > inStockEggs
+}
+
 // ── Run-rate / days remaining ─────────────────────────────────────────────
 export function calcRunRate(sales, now = new Date()) {
   const cutoff = new Date(now)
