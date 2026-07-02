@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { wouldExceedStock, calcInStockEggs } from '../lib/calculations.js'
+import { wouldExceedStock, calcInStockEggs } from '../src/lib/calculations.js'
 
 describe('wouldExceedStock — blocks selling more than what is actually in stock', () => {
 
