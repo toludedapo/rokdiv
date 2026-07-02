@@ -327,7 +327,7 @@ const fieldInput = {
 }
 const stockOverlay = {
   position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-  display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
   zIndex: 1000, padding: 20,
   overflowY: 'auto', WebkitOverflowScrolling: 'touch',
   paddingTop: 'max(env(safe-area-inset-top), 20px)',
@@ -336,7 +336,7 @@ const stockOverlay = {
 const stockModal = {
   background: '#FFFFFF', borderRadius: 20, padding: 24,
   width: '100%', maxWidth: 360,
-  marginTop: 'max(10vh, 20px)', marginBottom: 20,
+  margin: 'auto',
   boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
 }
 const primaryBtn = {
