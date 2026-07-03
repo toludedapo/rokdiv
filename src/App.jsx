@@ -8,6 +8,7 @@ import { usePayments }      from './hooks/usePayments'
 import { useExpenses }      from './hooks/useExpenses'
 import { useOfflineSync }   from './hooks/useOfflineSync'
 import { useWeeklySummary } from './hooks/useWeeklySummary'
+import { useUpdateAvailable } from './hooks/useUpdateAvailable'
 import { calcInStockEggs }  from './lib/calculations'
 
 import AuthScreen         from './components/AuthScreen'
@@ -23,6 +24,7 @@ import Toast              from './components/Toast'
 import ChangePassword     from './components/ChangePassword'
 import CrateInventoryCard from './components/CrateInventoryCard'
 import CrateSetupPrompt   from './components/CrateSetupPrompt'
+import UpdateBanner       from './components/UpdateBanner'
 
 const ADMIN_EMAIL = 'dadimula1@gmail.com'
 
@@ -69,6 +71,8 @@ export default function App() {
   const [offlineCount, setOfflineCount] = useState(0)
   const [showChangePw, setShowChangePw] = useState(false)
   const [crateSetupDismissed, setCrateSetupDismissed] = useState(false)
+  const [updateBannerDismissed, setUpdateBannerDismissed] = useState(false)
+  const updateAvailable = useUpdateAvailable()
   const isDesktop = useIsDesktop()
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
@@ -464,6 +468,9 @@ export default function App() {
             onDismiss={() => setCrateSetupDismissed(true)}
           />
         )}
+        {updateAvailable && !updateBannerDismissed && (
+          <UpdateBanner onDismiss={() => setUpdateBannerDismissed(true)} />
+        )}
       </div>
     )
   }
@@ -508,6 +515,12 @@ export default function App() {
         <CrateSetupPrompt
           onSetTotalOwned={setTotalOwned}
           onDismiss={() => setCrateSetupDismissed(true)}
+        />
+      )}
+      {updateAvailable && !updateBannerDismissed && (
+        <UpdateBanner
+          onDismiss={() => setUpdateBannerDismissed(true)}
+          bottomOffset="calc(90px + env(safe-area-inset-bottom))"
         />
       )}
     </div>
