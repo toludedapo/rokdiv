@@ -5,7 +5,7 @@ import {
   calcTotalCollectedEggs, calcTotalSoldEggs, calcTotalSoldCrates,
   calcInStockEggs, calcInStockCrates, calcInStockSingles,
   calcRunRate, calcDaysLeft, stockSignalFor, stockLabelFor,
-  calcOutstanding, buildPaidBySaleMap,
+  calcOutstanding, buildPaidBySaleMap, buildDebtors,
   calcTotalExpenses, calcNetProfit,
   calcTopBuyers, calcTopDebts, calcCollectionStreak,
   filterByMonth,
@@ -208,7 +208,11 @@ export default function SummaryCards({ collections = [], sales = [], expenses = 
   const netProfit = calcNetProfit(monthRevenue, monthExpenses)
   const hasExpenseData = monthExpenses > 0
 
-  const creditSales = useMemo(() => sales.filter(s => s.payment_status==='Credit'&&!s.paid_at), [sales])
+  // Unique people who owe money — deliberately NOT creditSales.length (that
+  // counts individual credit sale rows, so one customer with 2 open sales
+  // would count as "2 debtors"). This matches buildDebtors() exactly, the
+  // same function CreditTracker.jsx uses, so Home and Credit always agree.
+  const debtorCount = useMemo(() => buildDebtors(sales, payments).filter(d => !d.isSettled).length, [sales, payments])
   const paidBySale  = useMemo(() => buildPaidBySaleMap(payments), [payments])
   const outstanding = useMemo(() => calcOutstanding(sales, payments), [sales, payments])
 
@@ -320,7 +324,7 @@ export default function SummaryCards({ collections = [], sales = [], expenses = 
             {outstanding>0 ? fmt(outstanding) : 'Clear'}
           </p>
           <p style={{ ...sub, marginTop:'4px' }}>
-            {outstanding>0?`${creditSales.length} debtor${creditSales.length!==1?'s':''}`:'No unpaid credit'}
+            {outstanding>0?`${debtorCount} debtor${debtorCount!==1?'s':''}`:'No unpaid credit'}
           </p>
         </div>
       </div>
