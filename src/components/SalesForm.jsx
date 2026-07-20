@@ -235,7 +235,10 @@ export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, c
                             </span>
                           )}
                         </div>
-                        <p style={{ fontSize: 12, color: '#8E8E93', marginTop: 3 }}>{fmtDate(s.date)} · {(s.crates*CRATE_SIZE+s.singles).toLocaleString()} eggs</p>
+                        <p style={{ fontSize: 12, color: '#8E8E93', marginTop: 3 }}>
+                          {fmtDate(s.date)} · {(s.crates*CRATE_SIZE+s.singles).toLocaleString()} eggs
+                          {s.entered_by && <> · <span style={{ color: '#AEAEB2' }}>{s.entered_by.split('@')[0]}</span></>}
+                        </p>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E' }}>{fmtNaira(s.amount)}</span>

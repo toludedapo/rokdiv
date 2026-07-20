@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 const ADMIN_USER_ID = '8592c29c-2d26-4832-93e7-14d264c91631'
 
 // ─── Sales ──────────────────────────────────────────────────────────────────
-export function useSales(userId) {
+export function useSales(userId, enteredBy) {
   const [sales,   setSales]   = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -40,7 +40,7 @@ export function useSales(userId) {
   const addSale = async (sale) => {
     const { data, error } = await supabase
       .from('sales')
-      .insert({ ...sale, user_id: ADMIN_USER_ID })
+      .insert({ ...sale, user_id: ADMIN_USER_ID, entered_by: enteredBy ?? null })
       .select()
       .maybeSingle()
     if (!error && data) setSales(prev => [data, ...prev])
@@ -67,7 +67,7 @@ export function useSales(userId) {
 }
 
 // ─── Collections ────────────────────────────────────────────────────────────
-export function useCollections(userId) {
+export function useCollections(userId, enteredBy) {
   const [collections, setCollections] = useState([])
   const [loading,     setLoading]     = useState(true)
 
@@ -98,7 +98,7 @@ export function useCollections(userId) {
   const addCollection = async (col) => {
     const { data, error } = await supabase
       .from('collections')
-      .insert({ ...col, user_id: ADMIN_USER_ID })
+      .insert({ ...col, user_id: ADMIN_USER_ID, entered_by: enteredBy ?? null })
       .select()
       .maybeSingle()
     if (!error && data) setCollections(prev => [data, ...prev])

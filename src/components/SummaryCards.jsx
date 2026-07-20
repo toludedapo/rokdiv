@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import {
   eggsFromRecord, CRATE_SIZE,
   calcRevenue, calcRevenueTrend,
@@ -31,10 +31,36 @@ const TINT = {
 
 // ── Collection Trend Chart ───────────────────────────────────────────────────
 export function CollectionChart({ collections }) {
-  const [range, setRange] = useState(14)
+  // Default to whichever window (7/14/30) actually has real history behind
+  // it, rather than always starting at 14d. A young account (recently
+  // wiped, or just getting started) would otherwise default to a view
+  // that's mostly empty gray bars — not because anything's broken, but
+  // because there simply isn't 14 days of data yet. The toggle buttons
+  // still let anyone manually look further back at any time; this only
+  // changes what they see on first load.
+  const [range, setRange] = useState(7)
+  const rangeInitialized = useRef(false)
+
+  useEffect(() => {
+    // Wait for real collection data to actually arrive before deciding the
+    // default — collections may still be loading on first mount, and we
+    // don't want to lock in "7d" just because nothing had loaded yet.
+    // Runs exactly once, the first time real data shows up; the person's
+    // own 7d/14d/30d taps always take priority after that.
+    if (rangeInitialized.current || !collections.length) return
+    rangeInitialized.current = true
+    const earliest = collections.reduce((min, c) => c.date < min ? c.date : min, collections[0].date)
+    const daysSinceEarliest = Math.ceil((new Date() - new Date(earliest)) / 86400000) + 1
+    setRange(daysSinceEarliest <= 7 ? 7 : daysSinceEarliest <= 14 ? 14 : 30)
+  }, [collections])
   const today = new Date()
   today.setHours(0,0,0,0)
   const todayStr = today.toISOString().slice(0,10)
+
+  const earliestDate = useMemo(() => {
+    if (!collections.length) return null
+    return collections.reduce((min, c) => c.date < min ? c.date : min, collections[0].date)
+  }, [collections])
 
   const data = useMemo(() => {
     return Array.from({ length: range }, (_, i) => {
@@ -47,14 +73,42 @@ export function CollectionChart({ collections }) {
       const isToday = dateStr === todayStr
       const dayNum = d.toLocaleDateString('en-NG', { day: 'numeric' })
       const monthShort = d.toLocaleDateString('en-NG', { month: 'short' })
-      return { date: dateStr, eggs, isToday, dayNum, monthShort, fullLabel: `${dayNum} ${monthShort}` }
+      // A day only counts as genuinely "missed" if it's strictly before
+      // today (today may just not be logged YET, that's not the same as
+      // missed) and on or after the farm's very first-ever collection
+      // (days before the operation existed aren't missed — there was
+      // nothing to log). This is the widget's actual primary job now: a
+      // missed day is exactly the kind of gap that silently corrupted
+      // stock numbers earlier and took real detective work to trace.
+      const isMissed = eggs === 0 && !isToday && (!earliestDate || dateStr >= earliestDate)
+      return { date: dateStr, eggs, isToday, isMissed, dayNum, monthShort, fullLabel: `${dayNum} ${monthShort}` }
     })
-  }, [collections, range])
+  }, [collections, range, earliestDate])
 
+  const missedDays = data.filter(d => d.isMissed)
   const daysWithData = data.filter(d => d.eggs > 0)
   const avg = daysWithData.length > 0
     ? daysWithData.reduce((s, d) => s + d.eggs, 0) / daysWithData.length
     : 0
+
+  // Period-over-period comparison — only shown once there's enough real
+  // history behind it to be honest. A "+340%" three days after a restart
+  // isn't insight, it's noise from a tiny sample.
+  const totalDistinctDays = useMemo(() => new Set(collections.map(c => c.date)).size, [collections])
+  const showComparison = totalDistinctDays >= 14
+  const periodComparison = useMemo(() => {
+    if (!showComparison) return null
+    const prevStart = new Date(today); prevStart.setDate(prevStart.getDate() - (range * 2 - 1))
+    const prevEnd   = new Date(today); prevEnd.setDate(prevEnd.getDate() - range)
+    const prevStartStr = prevStart.toISOString().slice(0, 10)
+    const prevEndStr   = prevEnd.toISOString().slice(0, 10)
+    const prevTotal = collections
+      .filter(c => c.date >= prevStartStr && c.date <= prevEndStr)
+      .reduce((s, c) => s + eggsFromRecord(c), 0)
+    if (prevTotal === 0) return null // avoid a meaningless "+Infinity%"
+    const currentTotal = data.reduce((s, d) => s + d.eggs, 0)
+    return { pct: Math.round(((currentTotal - prevTotal) / prevTotal) * 100), currentTotal, prevTotal }
+  }, [collections, range, showComparison, data])
   const max = Math.max(...data.map(d => d.eggs), avg * 1.2, 300)
   const W = 100
   const H = 44
@@ -74,7 +128,14 @@ export function CollectionChart({ collections }) {
           <p style={label}>Collection trend</p>
           <p style={{ margin:0, fontSize:'12px', color:'#8E8E93' }}>
             {daysWithData.length > 0
-              ? <>avg <span style={{ fontWeight:500, color:'#1C1C1E' }}>{Math.round(avg).toLocaleString()}</span> eggs/day · {daysWithData.length} active day{daysWithData.length!==1?'s':''}</>
+              ? <>
+                  avg <span style={{ fontWeight:500, color:'#1C1C1E' }}>{Math.round(avg).toLocaleString()}</span> eggs/day · {daysWithData.length} active day{daysWithData.length!==1?'s':''}
+                  {periodComparison && (
+                    <> · <span style={{ fontWeight:500, color: periodComparison.pct >= 0 ? SIGNAL.green : SIGNAL.red }}>
+                      {periodComparison.pct >= 0 ? '▲' : '▼'} {Math.abs(periodComparison.pct)}%
+                    </span> vs prior {range}d</>
+                  )}
+                </>
               : 'No data yet'}
           </p>
         </div>
@@ -89,6 +150,17 @@ export function CollectionChart({ collections }) {
           ))}
         </div>
       </div>
+      {missedDays.length > 0 && (
+        <div style={{
+          display:'flex', alignItems:'center', gap:6, marginBottom:10,
+          padding:'7px 10px', borderRadius:8, background: TINT.red,
+        }}>
+          <span style={{ width:6, height:6, borderRadius:99, background: SIGNAL.red, flexShrink:0 }} />
+          <span style={{ fontSize:12, color: SIGNAL.red, fontWeight:500 }}>
+            {missedDays.length} day{missedDays.length!==1?'s':''} with no collection logged in this period
+          </span>
+        </div>
+      )}
       <svg viewBox={`0 0 100 ${H + 14}`} style={{ width:'100%', display:'block' }} preserveAspectRatio="none">
         {avg > 0 && (
           <line x1="0" y1={H-(avg/max)*H} x2="100" y2={H-(avg/max)*H}
@@ -109,6 +181,9 @@ export function CollectionChart({ collections }) {
                 fill={d.eggs === 0 ? '#F2F2F7' : isAbove ? '#1C1C1E' : '#D1D1D6'}
                 opacity={d.isToday ? 1 : 0.85}
               />
+              {d.isMissed && (
+                <rect x={x} y={H - 1.5} width={barW} height="1.5" rx="0.5" fill={SIGNAL.red} />
+              )}
               {d.isToday && d.eggs > 0 && (
                 <circle cx={x + barW/2} cy={H - barH - 2} r="1" fill={SIGNAL.orange} />
               )}
@@ -125,7 +200,7 @@ export function CollectionChart({ collections }) {
           )
         })}
       </svg>
-      <div style={{ display:'flex', gap:'12px', marginTop:'4px' }}>
+      <div style={{ display:'flex', gap:'12px', marginTop:'4px', flexWrap:'wrap' }}>
         <span style={{ display:'flex', alignItems:'center', gap:'4px', fontSize:'11px', color:'#8E8E93' }}>
           <span style={{ width:7, height:7, borderRadius:2, background:'#1C1C1E', display:'inline-block' }} />
           Above avg
@@ -134,6 +209,12 @@ export function CollectionChart({ collections }) {
           <span style={{ width:7, height:7, borderRadius:2, background:'#D1D1D6', display:'inline-block' }} />
           Below avg
         </span>
+        {missedDays.length > 0 && (
+          <span style={{ display:'flex', alignItems:'center', gap:'4px', fontSize:'11px', color:'#8E8E93' }}>
+            <span style={{ width:7, height:7, borderRadius:2, background:SIGNAL.red, display:'inline-block' }} />
+            Missed day
+          </span>
+        )}
         {daysWithData.length < 3 && (
           <span style={{ fontSize:'11px', color:'#C7C7CC', marginLeft:'auto' }}>
             More data = better avg

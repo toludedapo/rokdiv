@@ -58,8 +58,8 @@ function getGreeting() {
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
-  const { collections, addCollection, loading: collectionsLoading } = useCollections(user?.id)
-  const { sales, addSale, updateSale, markPaid, loading: salesLoading } = useSales(user?.id)
+  const { collections, addCollection, loading: collectionsLoading } = useCollections(user?.id, user?.email)
+  const { sales, addSale, updateSale, markPaid, loading: salesLoading } = useSales(user?.id, user?.email)
   const { inventory, setTotalOwned, loading: crateLoading } = useCrateInventory(user?.id)
   const { payments, addPayment, deletePayment, loading: paymentsLoading }     = usePayments(user?.id)
   const { customers, addCustomer, updateCustomer, deleteCustomer, loading: customersLoading } = useCustomers(user?.id)
