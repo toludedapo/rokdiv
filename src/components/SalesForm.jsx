@@ -13,6 +13,7 @@ export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, c
   const [open, setOpen] = useState(true)
   const [form, setForm] = useState({ date: todayISO(), customer_name: '', crates: '', singles: '', amount: '', payment_status: 'Paid', payment_mode: 'Cash', crates_loaned: '', notes: '' })
   const [error,  setError]  = useState('')
+  const [deletingId, setDeletingId] = useState(null)
   const [stockBlock, setStockBlock] = useState(null) // popup shown when a sale would exceed real stock
   const [saving, setSaving] = useState(false)
   const [filter, setFilter]       = useState('All')
@@ -242,7 +243,19 @@ export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, c
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                         <span style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E' }}>{fmtNaira(s.amount)}</span>
-                        {!s.isOffline && <button onClick={() => onDelete(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C7C7CC', padding: 3 }}><Trash2 size={13} /></button>}
+                        {!s.isOffline && (
+                          <button
+                            onClick={async () => {
+                              if (deletingId) return // prevent double-taps firing overlapping deletes
+                              setDeletingId(s.id)
+                              try { await onDelete(s.id) } finally { setDeletingId(null) }
+                            }}
+                            disabled={deletingId === s.id}
+                            style={{ background: 'none', border: 'none', cursor: deletingId === s.id ? 'default' : 'pointer', color: '#C7C7CC', padding: 3 }}
+                          >
+                            {deletingId === s.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                          </button>
+                        )}
                       </div>
                     </div>
 

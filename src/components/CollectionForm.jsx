@@ -12,6 +12,7 @@ export default function CollectionForm({ collections = [], onSave, onDelete, onQ
   const [form,   setForm]   = useState({ date: todayISO(), crates: '', singles: '', notes: '' })
   const [error,  setError]  = useState('')
   const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -127,8 +128,16 @@ export default function CollectionForm({ collections = [], onSave, onDelete, onQ
                       )}
                     </div>
                     {!c.isOffline && (
-                      <button onClick={() => onDelete(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#C7C7CC', padding: 4 }}>
-                        <Trash2 size={13} />
+                      <button
+                        onClick={async () => {
+                          if (deletingId) return
+                          setDeletingId(c.id)
+                          try { await onDelete(c.id) } finally { setDeletingId(null) }
+                        }}
+                        disabled={deletingId === c.id}
+                        style={{ background: 'none', border: 'none', cursor: deletingId === c.id ? 'default' : 'pointer', color: '#C7C7CC', padding: 4 }}
+                      >
+                        {deletingId === c.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                       </button>
                     )}
                   </div>
