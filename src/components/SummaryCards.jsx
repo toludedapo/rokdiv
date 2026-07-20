@@ -53,8 +53,15 @@ export function CollectionChart({ collections }) {
     const daysSinceEarliest = Math.ceil((new Date() - new Date(earliest)) / 86400000) + 1
     setRange(daysSinceEarliest <= 7 ? 7 : daysSinceEarliest <= 14 ? 14 : 30)
   }, [collections])
-  const today = new Date()
-  today.setHours(0,0,0,0)
+  // "Today" for this whole widget must be the UTC calendar date, matching
+  // exactly how Postgres's CURRENT_DATE and every stored collection.date
+  // already work. The previous version used today.setHours(0,0,0,0), which
+  // sets midnight in the BROWSER'S LOCAL timezone before converting to UTC —
+  // for any timezone ahead of UTC (Nigeria is UTC+1), that silently rolls
+  // the computed date back by a day. Building the date directly from UTC
+  // components avoids that local/UTC round-trip entirely.
+  const now = new Date()
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
   const todayStr = today.toISOString().slice(0,10)
 
   const earliestDate = useMemo(() => {
@@ -65,7 +72,7 @@ export function CollectionChart({ collections }) {
   const data = useMemo(() => {
     return Array.from({ length: range }, (_, i) => {
       const d = new Date(today)
-      d.setDate(d.getDate() - (range - 1 - i))
+      d.setUTCDate(d.getUTCDate() - (range - 1 - i))
       const dateStr = d.toISOString().slice(0, 10)
       const eggs = collections
         .filter(c => c.date === dateStr)
@@ -98,8 +105,8 @@ export function CollectionChart({ collections }) {
   const showComparison = totalDistinctDays >= 14
   const periodComparison = useMemo(() => {
     if (!showComparison) return null
-    const prevStart = new Date(today); prevStart.setDate(prevStart.getDate() - (range * 2 - 1))
-    const prevEnd   = new Date(today); prevEnd.setDate(prevEnd.getDate() - range)
+    const prevStart = new Date(today); prevStart.setUTCDate(prevStart.getUTCDate() - (range * 2 - 1))
+    const prevEnd   = new Date(today); prevEnd.setUTCDate(prevEnd.getUTCDate() - range)
     const prevStartStr = prevStart.toISOString().slice(0, 10)
     const prevEndStr   = prevEnd.toISOString().slice(0, 10)
     const prevTotal = collections
