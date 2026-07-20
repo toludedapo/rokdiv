@@ -112,7 +112,10 @@ export default function CollectionForm({ collections = [], onSave, onDelete, onQ
                       )}
                       {c.isOffline && <span style={offlinePill}>Offline</span>}
                     </div>
-                    <p style={{ fontSize: 12, color: '#8E8E93', marginTop: 1 }}>{c.notes || `${c.crates} crates + ${c.singles} singles`}</p>
+                    <p style={{ fontSize: 12, color: '#8E8E93', marginTop: 1 }}>
+                      {c.notes || `${c.crates} crates + ${c.singles} singles`}
+                      {c.entered_by && <> · <span style={{ color: '#AEAEB2' }}>{c.entered_by.split('@')[0]}</span></>}
+                    </p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ textAlign:'right' }}>

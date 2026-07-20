@@ -139,7 +139,10 @@ export default function HistoryLog({ sales = [], collections = [], payments = []
               <div key={item.id} style={{ padding:'13px 0', borderBottom:idx<sorted.length-1?'0.5px solid #E5E5EA':'none', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10 }}>
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:14, color:'#1C1C1E', margin: 0 }}>{item.customer_name}</p>
-                  <p style={{ fontSize:12, color:'#8E8E93', marginTop:2 }}>{fmtDate(item.date)} · {(item.crates*CRATE_SIZE+item.singles).toLocaleString()} eggs</p>
+                  <p style={{ fontSize:12, color:'#8E8E93', marginTop:2 }}>
+                    {fmtDate(item.date)} · {(item.crates*CRATE_SIZE+item.singles).toLocaleString()} eggs
+                    {item.entered_by && <> · <span style={{ color:'#C7C7CC' }}>{item.entered_by.split('@')[0]}</span></>}
+                  </p>
                   <div style={{ display:'flex', gap:5, marginTop:6, flexWrap:'wrap' }}>
                     <span style={{
                       fontSize:11, fontWeight:500, padding:'2px 8px', borderRadius:99,
@@ -169,6 +172,7 @@ export default function HistoryLog({ sales = [], collections = [], payments = []
                   <p style={{ fontSize:12, color:'#8E8E93', marginTop:2 }}>
                     {(parseInt(item.crates*CRATE_SIZE)+parseInt(item.singles||0)).toLocaleString()} eggs
                     {item.notes ? ` · ${item.notes}` : ''}
+                    {item.entered_by && <> · <span style={{ color:'#C7C7CC' }}>{item.entered_by.split('@')[0]}</span></>}
                   </p>
                 </div>
                 <div style={{ textAlign:'right' }}>
