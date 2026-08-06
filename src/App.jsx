@@ -182,10 +182,16 @@ export default function App() {
 
   async function handleAddPayment(data) {
     try {
-      await addPayment({ ...data, user_id: user.id })
+      const result = await addPayment(data)
+      if (result?.error) {
+        showToast(`Could not save payment: ${result.error.message}`)
+        return result
+      }
       showToast('Payment recorded')
+      return result
     } catch (e) {
-      showToast('Could not save payment')
+      showToast(`Could not save payment: ${e.message || 'Please try again'}`)
+      return { error: e }
     }
   }
 

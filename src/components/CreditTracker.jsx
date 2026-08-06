@@ -97,6 +97,7 @@ export default function CreditTracker({
     const notes = partialForm.method + (partialForm.notes ? ` - ${partialForm.notes}` : '')
     let remaining = parseFloat(partialForm.amount)
     const sorted = [...debtor.sales].sort((a, b) => new Date(a.date) - new Date(b.date))
+    let saveFailed = false
     for (const sale of sorted) {
       if (remaining <= 0) break
       const alreadyPaid = paidBySaleMap[sale.id] || 0
@@ -104,10 +105,14 @@ export default function CreditTracker({
       if (owed <= 0) continue
       const applying = Math.min(owed, remaining)
       const result = await onAddPayment({ sale_id: sale.id, amount: applying, date: new Date().toISOString().slice(0,10), notes })
-      if (result?.error) break
+      if (result?.error) {
+        saveFailed = true
+        break
+      }
       remaining -= applying
     }
     setSaving(false)
+    if (saveFailed) return
     setPartialCustomer(null)
     setPartialForm({ amount: '', method: 'Cash', notes: '' })
   }
