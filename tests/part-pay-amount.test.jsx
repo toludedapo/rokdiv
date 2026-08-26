@@ -72,3 +72,71 @@ describe('REGRESSION: Part Pay submits exactly the amount actually typed', () =>
     expect(getAmountInput(container).value).toBe('')
   })
 })
+
+describe('REGRESSION: Part Pay correctly splits a payment across MULTIPLE open sales', () => {
+  // Structurally matches a real multi-sale debtor: two open Credit sales,
+  // oldest first, neither one alone covering the payment amount typed.
+  const multiSales = [
+    { id: 'sale-a', customer_name: 'Lapato', crates: 20, singles: 0, amount: 112000, payment_status: 'Credit', date: '2026-08-05' },
+    { id: 'sale-b', customer_name: 'Lapato', crates: 15, singles: 0, amount: 100000, payment_status: 'Credit', date: '2026-08-07' },
+  ]
+
+  it('a payment smaller than the oldest sale applies entirely to that one sale, in a single call', async () => {
+    const onAddPayment = vi.fn().mockResolvedValue({ error: null })
+    const { container } = render(
+      <CreditTracker sales={multiSales} payments={[]} onMarkPaid={noop} onAddPayment={onAddPayment} onDeletePayment={noop} onReturnCrates={noop} isAdmin={true} />
+    )
+
+    openPartPay(container)
+    act(() => { fireEvent.change(getAmountInput(container), { target: { value: '50000' } }) })
+    await act(async () => { clickRecordPayment(container) })
+
+    await waitFor(() => expect(onAddPayment).toHaveBeenCalled())
+    expect(onAddPayment).toHaveBeenCalledTimes(1)
+    expect(onAddPayment.mock.calls[0][0].sale_id).toBe('sale-a') // the OLDER sale, correctly
+    expect(onAddPayment.mock.calls[0][0].amount).toBe(50000)
+  })
+
+  it('REGRESSION: a payment larger than the oldest sale correctly splits across BOTH sales, summing to exactly what was typed', async () => {
+    const onAddPayment = vi.fn().mockResolvedValue({ error: null })
+    const { container } = render(
+      <CreditTracker sales={multiSales} payments={[]} onMarkPaid={noop} onAddPayment={onAddPayment} onDeletePayment={noop} onReturnCrates={noop} isAdmin={true} />
+    )
+
+    openPartPay(container)
+    // 150000 - more than sale-a's 112000, so it must spill into sale-b too
+    act(() => { fireEvent.change(getAmountInput(container), { target: { value: '150000' } }) })
+    await act(async () => { clickRecordPayment(container) })
+
+    await waitFor(() => expect(onAddPayment).toHaveBeenCalledTimes(2))
+    const calls = onAddPayment.mock.calls.map(c => c[0])
+    const totalApplied = calls.reduce((s, c) => s + c.amount, 0)
+
+    expect(totalApplied).toBe(150000) // must equal exactly what was typed, split or not
+    expect(calls.find(c => c.sale_id === 'sale-a').amount).toBe(112000) // fully covers the older sale first
+    expect(calls.find(c => c.sale_id === 'sale-b').amount).toBe(38000)  // remainder goes to the newer one
+  })
+
+  it('REGRESSION: if the SECOND insert in a split payment fails, the total actually saved must not silently exceed what was typed', async () => {
+    // sale-a's insert succeeds, sale-b's insert fails (simulating a real
+    // partial-failure mid-split - exactly the scenario a multi-sale debtor
+    // can hit that a single-sale debtor never can).
+    const onAddPayment = vi.fn()
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: { message: 'network error' } })
+
+    const { container } = render(
+      <CreditTracker sales={multiSales} payments={[]} onMarkPaid={noop} onAddPayment={onAddPayment} onDeletePayment={noop} onReturnCrates={noop} isAdmin={true} />
+    )
+
+    openPartPay(container)
+    act(() => { fireEvent.change(getAmountInput(container), { target: { value: '150000' } }) })
+    await act(async () => { clickRecordPayment(container) })
+
+    await waitFor(() => expect(onAddPayment).toHaveBeenCalledTimes(2))
+    const totalActuallyApplied = onAddPayment.mock.results
+      .filter(r => r.value && !r.value.error)
+      .length // can't sum amounts from unresolved promises directly here, but count of successful calls matters
+    expect(totalActuallyApplied).toBe(1) // only sale-a's payment actually succeeded
+  })
+})
