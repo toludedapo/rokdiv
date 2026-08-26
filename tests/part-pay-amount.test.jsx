@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, fireEvent } from '@testing-library/react'
+import { render, fireEvent, waitFor, act } from '@testing-library/react'
 import CreditTracker from '../src/components/CreditTracker'
 
 const noop = () => {}
@@ -11,7 +11,7 @@ const sales = [
 
 function openPartPay(container) {
   const partPayBtn = [...container.querySelectorAll('button')].find(b => b.textContent === 'Part pay')
-  fireEvent.click(partPayBtn)
+  act(() => { fireEvent.click(partPayBtn) })
 }
 
 function getAmountInput(container) {
@@ -31,10 +31,10 @@ describe('REGRESSION: Part Pay submits exactly the amount actually typed', () =>
     )
 
     openPartPay(container)
-    fireEvent.change(getAmountInput(container), { target: { value: '72000' } })
-    clickRecordPayment(container)
+    act(() => { fireEvent.change(getAmountInput(container), { target: { value: '72000' } }) })
+    await act(async () => { clickRecordPayment(container) })
 
-    await vi.waitFor(() => expect(onAddPayment).toHaveBeenCalled())
+    await waitFor(() => expect(onAddPayment).toHaveBeenCalled())
     expect(onAddPayment.mock.calls[0][0].amount).toBe(72000)
     expect(onAddPayment.mock.calls[0][0].sale_id).toBe('sale-1')
   })
@@ -47,18 +47,18 @@ describe('REGRESSION: Part Pay submits exactly the amount actually typed', () =>
 
     // First attempt: open, type 12000, cancel WITHOUT submitting
     openPartPay(container)
-    fireEvent.change(getAmountInput(container), { target: { value: '12000' } })
+    act(() => { fireEvent.change(getAmountInput(container), { target: { value: '12000' } }) })
     const cancelBtn = [...container.querySelectorAll('button')].find(b => b.textContent === 'Cancel')
-    fireEvent.click(cancelBtn)
+    act(() => { fireEvent.click(cancelBtn) })
 
     // Second attempt: reopen, type 72000, submit for real
     openPartPay(container)
     // The field must show blank (not the leftover "12000") the moment Part Pay reopens
     expect(getAmountInput(container).value).toBe('')
-    fireEvent.change(getAmountInput(container), { target: { value: '72000' } })
-    clickRecordPayment(container)
+    act(() => { fireEvent.change(getAmountInput(container), { target: { value: '72000' } }) })
+    await act(async () => { clickRecordPayment(container) })
 
-    await vi.waitFor(() => expect(onAddPayment).toHaveBeenCalled())
+    await waitFor(() => expect(onAddPayment).toHaveBeenCalled())
     // The only call ever made must carry 72000 — never 12000, never both
     expect(onAddPayment).toHaveBeenCalledTimes(1)
     expect(onAddPayment.mock.calls[0][0].amount).toBe(72000)

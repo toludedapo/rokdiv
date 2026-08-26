@@ -322,7 +322,14 @@ export default function CreditTracker({
 
               {!debtor.isSettled && (
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <button onClick={() => setPartialCustomer(isPartialOpen ? null : debtor.name)} style={primaryBtnSmall}>
+                  <button onClick={() => {
+                    if (isPartialOpen) {
+                      setPartialCustomer(null)
+                    } else {
+                      setPartialForm({ amount: '', method: 'Cash', notes: '' }) // never inherit a stale amount from a previous attempt or a different debtor
+                      setPartialCustomer(debtor.name)
+                    }
+                  }} style={primaryBtnSmall}>
                     Part pay
                   </button>
                   <button onClick={() => handleMarkFullyPaid(debtor)} style={successBtnSmall}>
@@ -379,7 +386,7 @@ export default function CreditTracker({
                   <button onClick={() => handlePartialSubmit(debtor)} disabled={saving} style={{ ...primaryBtnSmall, flex: 1, justifyContent: 'center' }}>
                     {saving ? 'Saving…' : 'Record payment'}
                   </button>
-                  <button onClick={() => setPartialCustomer(null)} style={secondaryBtnSmall}>
+                  <button onClick={() => { setPartialCustomer(null); setPartialForm({ amount: '', method: 'Cash', notes: '' }) }} style={secondaryBtnSmall}>
                     Cancel
                   </button>
                 </div>
