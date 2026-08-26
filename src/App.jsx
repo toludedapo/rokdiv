@@ -209,11 +209,11 @@ export default function App() {
 
   async function handleDeletePayment(id) {
     if (!isAdmin) return
-    try {
-      await deletePayment(id)
+    const { error } = await deletePayment(id)
+    if (error) {
+      showToast('Could not remove payment: ' + error.message)
+    } else {
       showToast('Payment record removed')
-    } catch (e) {
-      showToast('Could not remove payment')
     }
   }
 
