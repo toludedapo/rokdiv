@@ -117,26 +117,42 @@ describe('REGRESSION: Part Pay correctly splits a payment across MULTIPLE open s
     expect(calls.find(c => c.sale_id === 'sale-b').amount).toBe(38000)  // remainder goes to the newer one
   })
 
-  it('REGRESSION: if the SECOND insert in a split payment fails, the total actually saved must not silently exceed what was typed', async () => {
-    // sale-a's insert succeeds, sale-b's insert fails (simulating a real
-    // partial-failure mid-split - exactly the scenario a multi-sale debtor
-    // can hit that a single-sale debtor never can).
-    const onAddPayment = vi.fn()
-      .mockResolvedValueOnce({ error: null })
-      .mockResolvedValueOnce({ error: { message: 'network error' } })
+  it('REGRESSION: if a middle insert in a split payment fails, the loop stops immediately and never touches the sale after it', async () => {
+    // Three open sales this time. sale-a's insert succeeds, sale-b's FAILS.
+    // A correct implementation must stop right there — sale-c must never be
+    // called at all, and only sale-a's amount should count as genuinely saved.
+    const threeSales = [
+      ...multiSales,
+      { id: 'sale-c', customer_name: 'Lapato', crates: 5, singles: 0, amount: 50000, payment_status: 'Credit', date: '2026-08-10' },
+    ]
+
+    const attempts = []
+    const onAddPayment = vi.fn(async (data) => {
+      attempts.push(data)
+      if (attempts.length === 1) return { error: null }                          // sale-a: succeeds
+      return { error: { message: 'network error' } }                             // sale-b: fails
+    })
 
     const { container } = render(
-      <CreditTracker sales={multiSales} payments={[]} onMarkPaid={noop} onAddPayment={onAddPayment} onDeletePayment={noop} onReturnCrates={noop} isAdmin={true} />
+      <CreditTracker sales={threeSales} payments={[]} onMarkPaid={noop} onAddPayment={onAddPayment} onDeletePayment={noop} onReturnCrates={noop} isAdmin={true} />
     )
 
     openPartPay(container)
-    act(() => { fireEvent.change(getAmountInput(container), { target: { value: '150000' } }) })
+    // Enough to fully cover sale-a (112000) + spill into sale-b + sale-c if
+    // the (broken) loop kept going after the failure.
+    act(() => { fireEvent.change(getAmountInput(container), { target: { value: '250000' } }) })
     await act(async () => { clickRecordPayment(container) })
 
+    // Give any incorrect extra calls a chance to happen before asserting.
     await waitFor(() => expect(onAddPayment).toHaveBeenCalledTimes(2))
-    const totalActuallyApplied = onAddPayment.mock.results
-      .filter(r => r.value && !r.value.error)
-      .length // can't sum amounts from unresolved promises directly here, but count of successful calls matters
-    expect(totalActuallyApplied).toBe(1) // only sale-a's payment actually succeeded
+    await new Promise(r => setTimeout(r, 50))
+
+    expect(onAddPayment).toHaveBeenCalledTimes(2) // never reaches sale-c
+    expect(attempts[0].sale_id).toBe('sale-a')
+    expect(attempts[0].amount).toBe(112000)
+    expect(attempts[1].sale_id).toBe('sale-b')
+    // attempts[1] is the one our mock made fail — by construction, that
+    // amount was never actually persisted, so the true saved total is only
+    // attempts[0].amount (112000), not the full 250000 typed.
   })
 })
