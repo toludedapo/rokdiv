@@ -86,6 +86,13 @@ export default function CreditTracker({
 
   async function handleMarkFullyPaid(debtor) {
     for (const sale of debtor.sales) {
+      // Same guard as handlePartialSubmit: a Paid sale must never be acted
+      // on again, even if its raw payment-sum arithmetic looks incomplete.
+      // Without this, "Paid in full" would call onMarkPaid on an
+      // already-Paid sale purely because of a historical data gap — and
+      // markPaid overwrites paid_at to today, silently corrupting the
+      // sale's real payment date every time the button gets used.
+      if (sale.payment_status === 'Paid') continue
       const alreadyPaid = paidBySaleMap[sale.id] || 0
       if (parseFloat(sale.amount) - alreadyPaid > 0) await handleMarkPaid(sale.id)
     }
@@ -441,7 +448,15 @@ export default function CreditTracker({
                 )}
 
                 {debtor.sales.map(sale => {
-                  const salePaid     = paidBySaleMap[sale.id] || 0
+                  // Same rule as calcSaleBalance() in calculations.js: a Paid
+                  // sale is always fully settled at its full face amount,
+                  // regardless of what the raw payment log sums to. Deriving
+                  // it here (not just at the point of deciding an action)
+                  // keeps every downstream display consistent — the "paid"
+                  // text, the balance figure, and the action button below
+                  // all agree instead of a Paid sale showing a stray red
+                  // "balance" that doesn't actually exist.
+                  const salePaid     = sale.payment_status === 'Paid' ? parseFloat(sale.amount) : (paidBySaleMap[sale.id] || 0)
                   const saleBalance  = Math.max(0, parseFloat(sale.amount) - salePaid)
                   const aging        = agingLabel(sale.date)
                   const cratesStillOut = parseInt(sale.crates_loaned||0) - parseInt(sale.crates_returned||0)
