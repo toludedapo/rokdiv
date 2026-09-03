@@ -100,6 +100,13 @@ export default function CreditTracker({
     let saveFailed = false
     for (const sale of sorted) {
       if (remaining <= 0) break
+      // A sale marked Paid is always fully settled, full stop — same rule
+      // calcSaleBalance() already enforces everywhere else in this app.
+      // Without this check, an older Paid sale with an incidental gap
+      // between its face amount and recorded payments (rounding, a
+      // historical data quirk, an overpayment credited elsewhere) could
+      // silently absorb money that was meant for the real open debt.
+      if (sale.payment_status === 'Paid') continue
       const alreadyPaid = paidBySaleMap[sale.id] || 0
       const owed = parseFloat(sale.amount) - alreadyPaid
       if (owed <= 0) continue
