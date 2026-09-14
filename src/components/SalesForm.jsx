@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Plus, ChevronDown, ChevronUp, Trash2, Loader2 } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, Trash2, Loader2, Pencil } from 'lucide-react'
 import { todayISO, fmtDate, fmtNaira, CRATE_SIZE } from '../utils/dateUtils.js'
 import { wouldExceedStock } from '../lib/calculations'
 import { SkeletonFormWithList } from './Skeleton'
@@ -7,7 +7,7 @@ import { SkeletonFormWithList } from './Skeleton'
 const SIGNAL = { green: '#34C759', red: '#FF453A', orange: '#FF9F0A', gray: '#8E8E93' }
 const TINT = { green: 'rgba(52,199,89,0.12)', red: 'rgba(255,69,58,0.12)', orange: 'rgba(255,159,10,0.12)' }
 
-export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, customers = [], onSave, onDelete, onMarkPaid, onReturnCrates, onQueueOffline, onAddCustomer, showToast, loading = false }) {
+export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, customers = [], onSave, onDelete, onEdit, onMarkPaid, onReturnCrates, onQueueOffline, onAddCustomer, showToast, loading = false }) {
   if (loading) return <SkeletonFormWithList />
 
   const [open, setOpen] = useState(true)
@@ -20,6 +20,11 @@ export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, c
   const [returningId, setReturningId] = useState(null)
   const [returnQty, setReturnQty]     = useState('')
   const [returning, setReturning]     = useState(false)
+  const [editingId, setEditingId]     = useState(null)
+  const [editForm, setEditForm]       = useState(null)
+  const [editSaving, setEditSaving]   = useState(false)
+  const [editError, setEditError]     = useState('')
+  const setEditField = (k, v) => setEditForm(f => ({ ...f, [k]: v }))
 
   const [custSearch, setCustSearch] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -28,6 +33,71 @@ export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, c
   const suggestions = custSearch.length > 0
     ? customers.filter(c => c.name.toLowerCase().includes(custSearch.toLowerCase())).slice(0, 5)
     : []
+
+  function startEdit(sale) {
+    setEditingId(sale.id)
+    setEditError('')
+    setEditForm({
+      customer_name: sale.customer_name || '',
+      date: sale.date,
+      payment_status: sale.payment_status,
+      payment_mode: sale.payment_mode || 'Cash',
+      crates: String(sale.crates ?? ''),
+      singles: String(sale.singles ?? ''),
+      amount: String(sale.amount ?? ''),
+      crates_loaned: String(sale.crates_loaned ?? ''),
+    })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditForm(null)
+    setEditError('')
+  }
+
+  async function handleEditSave(originalSale) {
+    if (!editForm.customer_name.trim()) return setEditError('Customer name is required.')
+    if (!editForm.date) return setEditError('Pick a date.')
+    if (!editForm.amount || isNaN(+editForm.amount)) return setEditError('Enter a valid amount.')
+    if (editForm.crates === '' && editForm.singles === '') return setEditError('Enter quantity sold.')
+
+    const newTotalEggs = (Number(editForm.crates)||0)*CRATE_SIZE + (Number(editForm.singles)||0)
+    // This sale's own original quantity is already subtracted out of
+    // inStockEggs (it already happened) — give it back before checking the
+    // NEW quantity, so keeping the same amount (or reducing it) can never
+    // be wrongly blocked, and increasing it is still checked against what's
+    // genuinely available right now.
+    const originalEggs = (Number(originalSale.crates)||0)*CRATE_SIZE + (Number(originalSale.singles)||0)
+    const availableForThisEdit = inStockEggs + originalEggs
+    if (wouldExceedStock(newTotalEggs, availableForThisEdit)) {
+      setStockBlock({
+        attemptedEggs: newTotalEggs,
+        attemptedCrates: Number(editForm.crates) || 0,
+        attemptedSingles: Number(editForm.singles) || 0,
+        inStockEggs: availableForThisEdit,
+        inStockCrates: Math.floor(availableForThisEdit / CRATE_SIZE),
+        inStockSingles: availableForThisEdit % CRATE_SIZE,
+      })
+      return
+    }
+
+    setEditError('')
+    setEditSaving(true)
+    const { error } = await onEdit(originalSale.id, {
+      customer_name: editForm.customer_name.trim(),
+      date: editForm.date,
+      payment_status: editForm.payment_status,
+      payment_mode: editForm.payment_status === 'Paid' ? editForm.payment_mode : null,
+      crates: Number(editForm.crates) || 0,
+      singles: Number(editForm.singles) || 0,
+      amount: Number(editForm.amount) || 0,
+      crates_loaned: Number(editForm.crates_loaned) || 0,
+    })
+    setEditSaving(false)
+    if (error) return setEditError(error.message || 'Could not save changes.')
+    showToast('Sale updated')
+    cancelEdit()
+  }
 
   async function handleSubmit() {
     if (!form.customer_name.trim()) return setError('Customer name is required.')
@@ -245,6 +315,15 @@ export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, c
                         <span style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E' }}>{fmtNaira(s.amount)}</span>
                         {!s.isOffline && (
                           <button
+                            data-testid={`edit-sale-${s.id}`}
+                            onClick={() => editingId === s.id ? cancelEdit() : startEdit(s)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: editingId === s.id ? '#1C1C1E' : '#C7C7CC', padding: 3 }}
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        )}
+                        {!s.isOffline && (
+                          <button
                             onClick={async () => {
                               if (deletingId) return // prevent double-taps firing overlapping deletes
                               setDeletingId(s.id)
@@ -258,6 +337,77 @@ export default function SalesForm({ sales = [], cratesInFarm, inStockEggs = 0, c
                         )}
                       </div>
                     </div>
+
+                    {editingId === s.id && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '0.5px solid #D1D1D6' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <div style={{ gridColumn: 'span 2' }}>
+                            <label style={fieldLabel}>Customer</label>
+                            <input type="text" style={fieldInput} value={editForm.customer_name} onChange={e => setEditField('customer_name', e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={fieldLabel}>Date</label>
+                            <input type="date" style={fieldInput} value={editForm.date} onChange={e => setEditField('date', e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={fieldLabel}>Payment</label>
+                            <select style={fieldInput} value={editForm.payment_status} onChange={e => setEditField('payment_status', e.target.value)}>
+                              <option value="Paid">Paid</option>
+                              <option value="Credit">Credit</option>
+                            </select>
+                          </div>
+                          {editForm.payment_status === 'Paid' && (
+                            <div style={{ gridColumn: 'span 2' }}>
+                              <label style={fieldLabel}>Payment mode</label>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                {['Cash', 'Transfer', 'POS'].map(key => (
+                                  <button key={key} type="button"
+                                    onClick={() => setEditField('payment_mode', key)}
+                                    style={{
+                                      flex: 1, padding: '8px 0', borderRadius: 10, fontSize: 12, fontWeight: 500,
+                                      border: `1.5px solid ${editForm.payment_mode === key ? '#1C1C1E' : '#D1D1D6'}`,
+                                      background: editForm.payment_mode === key ? '#1C1C1E' : '#FFFFFF',
+                                      color: editForm.payment_mode === key ? '#FFFFFF' : '#8E8E93',
+                                      cursor: 'pointer',
+                                    }}>
+                                    {key}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div>
+                            <label style={fieldLabel}>Crates sold</label>
+                            <input data-testid="edit-crates" type="number" inputMode="numeric" style={fieldInput} value={editForm.crates} onChange={e => setEditField('crates', e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={fieldLabel}>Singles</label>
+                            <input type="number" inputMode="numeric" style={fieldInput} value={editForm.singles} onChange={e => setEditField('singles', e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={fieldLabel}>Amount (₦)</label>
+                            <input data-testid="edit-amount" type="number" inputMode="numeric" style={fieldInput} value={editForm.amount} onChange={e => setEditField('amount', e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={fieldLabel}>Crates loaned</label>
+                            <input type="number" inputMode="numeric" style={fieldInput} value={editForm.crates_loaned} onChange={e => setEditField('crates_loaned', e.target.value)} />
+                          </div>
+                        </div>
+                        {editError && (
+                          <div style={{ marginTop: 8, background: 'rgba(255,69,58,0.1)', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: SIGNAL.red }}>{editError}</div>
+                        )}
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                          <button data-testid="save-edit" onClick={() => handleEditSave(s)} disabled={editSaving}
+                            style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#1C1C1E', color: '#FFFFFF', border: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                            {editSaving && <Loader2 size={13} className="animate-spin" />} Save changes
+                          </button>
+                          <button onClick={cancelEdit} disabled={editSaving}
+                            style={{ padding: '10px 16px', borderRadius: 10, background: '#FFFFFF', color: '#8E8E93', border: '1.5px solid #D1D1D6', fontSize: 13, cursor: 'pointer' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {(s.crates_loaned - (s.crates_returned || 0)) > 0 && !s.isOffline && (
                       <div style={{ marginTop: 8 }}>

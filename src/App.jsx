@@ -278,6 +278,7 @@ export default function App() {
           inStockEggs={calcInStockEggs(collections || [], sales || [])}
           onSave={handleAddSale}
           onDelete={deleteSale}
+          onEdit={updateSale}
           onMarkPaid={handleMarkPaid}
           onReturnCrates={handleReturnCrates}
           onQueueOffline={() => {}}
