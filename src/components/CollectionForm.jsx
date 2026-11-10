@@ -13,6 +13,7 @@ export default function CollectionForm({ collections = [], onSave, onDelete, onQ
   const [error,  setError]  = useState('')
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
+  const [showAll, setShowAll] = useState(false)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -43,7 +44,12 @@ export default function CollectionForm({ collections = [], onSave, onDelete, onQ
   }
 
   const total  = (Number(form.crates)||0)*CRATE_SIZE + (Number(form.singles)||0)
-  const sorted = [...collections].sort((a,b) => a.date < b.date ? 1 : -1)
+  // Newest first: by date, then by time logged (so same-day entries stay in order)
+  const stamp  = c => c.collected_at || c.created_at || ''
+  const sorted = [...collections].sort((a,b) =>
+    a.date !== b.date ? (a.date < b.date ? 1 : -1) : (stamp(a) < stamp(b) ? 1 : -1))
+  const LIMIT   = 20
+  const visible = showAll ? sorted : sorted.slice(0, LIMIT)
 
   function fmtTime(iso) {
     if (!iso) return ''
@@ -103,8 +109,8 @@ export default function CollectionForm({ collections = [], onSave, onDelete, onQ
           {sorted.length > 0 && (
             <div style={{ marginTop: 18 }}>
               <p style={label}>Recent entries</p>
-              {sorted.slice(0, 8).map((c, idx) => (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 0', borderBottom: idx < Math.min(sorted.length, 8) - 1 ? '0.5px solid #E5E5EA' : 'none' }}>
+              {visible.map((c, idx) => (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 0', borderBottom: idx < visible.length - 1 ? '0.5px solid #E5E5EA' : 'none' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <p style={{ fontSize: 14, color: '#1C1C1E', margin: 0 }}>{fmtDate(c.date)}</p>
@@ -132,7 +138,11 @@ export default function CollectionForm({ collections = [], onSave, onDelete, onQ
                         onClick={async () => {
                           if (deletingId) return
                           setDeletingId(c.id)
-                          try { await onDelete(c.id) } finally { setDeletingId(null) }
+                          try {
+                            const res = await onDelete(c.id)
+                            if (res?.error) showToast?.('Delete failed: ' + res.error.message)
+                            else showToast?.('Entry deleted')
+                          } finally { setDeletingId(null) }
                         }}
                         disabled={deletingId === c.id}
                         style={{ background: 'none', border: 'none', cursor: deletingId === c.id ? 'default' : 'pointer', color: '#C7C7CC', padding: 4 }}
@@ -143,7 +153,11 @@ export default function CollectionForm({ collections = [], onSave, onDelete, onQ
                   </div>
                 </div>
               ))}
-              {sorted.length > 8 && <p style={{ fontSize: 12, color: '#8E8E93', textAlign: 'center', paddingTop: 8 }}>+{sorted.length - 8} older entries</p>}
+              {sorted.length > LIMIT && (
+                <button onClick={() => setShowAll(v => !v)} style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#007AFF', textAlign: 'center', paddingTop: 10 }}>
+                  {showAll ? 'Show fewer' : `Show all (${sorted.length - LIMIT} older)`}
+                </button>
+              )}
             </div>
           )}
         </div>

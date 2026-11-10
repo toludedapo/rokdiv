@@ -106,7 +106,11 @@ export function useCollections(userId, enteredBy) {
   }
 
   const deleteCollection = async (id) => {
+    // Remove from the list immediately; don't wait on realtime to refresh.
+    let removed
+    setCollections(prev => { removed = prev; return prev.filter(c => c.id !== id) })
     const { error } = await supabase.from('collections').delete().eq('id', id)
+    if (error && removed) setCollections(removed)
     return { error }
   }
 
